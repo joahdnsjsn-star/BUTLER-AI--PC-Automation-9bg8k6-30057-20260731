@@ -4,7 +4,7 @@
  * upgrade banners, build metadata, and release notes. Fully Butler AI styled.
  */
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, Modal, ScrollView,
   Animated, Platform, Linking, ActivityIndicator,
@@ -44,7 +44,16 @@ export const APP_VERSION = {
   packageName: 'com.butlerai.pc.automation',
 };
 
-const CHANGELOG: { version: string; date: string; color: string; changes: { type: 'feat' | 'fix' | 'perf' | 'security'; text: string }[] }[] = [
+type ChangeType = 'feat' | 'fix' | 'perf' | 'security';
+
+interface ChangelogRelease {
+  version: string;
+  date: string;
+  color: string;
+  changes: { type: ChangeType; text: string }[];
+}
+
+const CHANGELOG: ChangelogRelease[] = [
   {
     version: '7.3.0',
     date: '2026-06-23',
@@ -88,6 +97,7 @@ const CHANGELOG: { version: string; date: string; color: string; changes: { type
 
 const VERSION_CHECK_KEY = '@butler_version_last_check_v1';
 const DISMISSED_VERSION_KEY = '@butler_version_dismissed_v1';
+const AUTO_SHOWN_CHANGELOG_VERSION_KEY = '@butler_version_changelog_seen_v1';
 
 export type VersionStatus = 'current' | 'update_available' | 'force_update' | 'server_mismatch' | 'unknown';
 
@@ -188,6 +198,20 @@ function ChangelogModal({ visible, onClose }: { visible: boolean; onClose: () =>
     perf:     { color: C.amber,  label: 'PERF',     icon: 'speed' },
     security: { color: C.red,    label: 'SEC',      icon: 'security' },
   } as const;
+  const allUpdates = useMemo(
+    () =>
+      CHANGELOG.flatMap((release) =>
+        release.changes.map((change, idx) => ({
+          id: `${release.version}_${idx}`,
+          version: release.version,
+          date: release.date,
+          color: release.color,
+          type: change.type,
+          text: change.text,
+        })),
+      ),
+    [],
+  );
 
   return (
     <Modal visible={visible} animationType="slide" statusBarTranslucent onRequestClose={onClose}>
@@ -222,6 +246,31 @@ function ChangelogModal({ visible, onClose }: { visible: boolean; onClose: () =>
         </View>
 
         <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, gap: 16, paddingBottom: 60 }} showsVerticalScrollIndicator={false}>
+          <View style={[cls.releaseCard, { borderTopColor: C.purple }]}>
+            <View style={cls.releaseHeader}>
+              <View style={[cls.versionBadge, { borderColor: C.purple + '60', backgroundColor: C.purple + '12' }]}>
+                <Text style={[cls.versionTxt, { color: C.purple }]}>ALL UPDATES</Text>
+              </View>
+              <Text style={cls.changeCount}>{allUpdates.length} total items</Text>
+            </View>
+            <View style={{ gap: 6 }}>
+              {allUpdates.map((change) => {
+                const cfg = TYPE_CONFIG[change.type];
+                return (
+                  <View key={change.id} style={[cls.changeRow, { borderLeftColor: cfg.color }]}>
+                    <View style={[cls.typeBadge, { borderColor: cfg.color + '55', backgroundColor: cfg.color + '10' }]}>
+                      <MaterialIcons name={cfg.icon as any} size={9} color={cfg.color} />
+                      <Text style={[cls.typeLabel, { color: cfg.color }]}>{cfg.label}</Text>
+                    </View>
+                    <Text style={cls.changeText}>
+                      • v{change.version} ({change.date}) — {change.text}
+                    </Text>
+                  </View>
+                );
+              })}
+            </View>
+          </View>
+
           {CHANGELOG.map((release, ri) => (
             <View key={ri} style={[cls.releaseCard, { borderTopColor: release.color }]}>
               {/* Release header */}
@@ -317,15 +366,35 @@ export function AppVersionBanner() {
   const opacAnim  = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    checkServerVersion().then(r => {
+    let active = true;
+    (async () => {
+      const [r, dismissedVersion, autoShownVersion] = await Promise.all([
+        checkServerVersion(),
+        AsyncStorage.getItem(DISMISSED_VERSION_KEY),
+        AsyncStorage.getItem(AUTO_SHOWN_CHANGELOG_VERSION_KEY),
+      ]);
+      if (!active) return;
+
       setResult(r);
+      const isForce = !!r.forceUpdate;
+      setDismissed(!isForce && dismissedVersion === APP_VERSION.display);
+
       if (r.status !== 'current' && r.status !== 'unknown') {
         Animated.parallel([
           Animated.spring(slideAnim, { toValue: 0, tension: 80, friction: 14, useNativeDriver: true }),
           Animated.timing(opacAnim, { toValue: 1, duration: 300, useNativeDriver: true }),
         ]).start();
       }
-    });
+
+      const shouldAutoShow = r.status !== 'current' && r.status !== 'unknown' && autoShownVersion !== APP_VERSION.display;
+      if (shouldAutoShow) {
+        setShowChangelog(true);
+        AsyncStorage.setItem(AUTO_SHOWN_CHANGELOG_VERSION_KEY, APP_VERSION.display).catch(() => {});
+      }
+    })();
+    return () => {
+      active = false;
+    };
   }, []);
 
   if (!result || result.status === 'current' || result.status === 'unknown' || dismissed) {
@@ -350,14 +419,23 @@ export function AppVersionBanner() {
           <Text style={vb.msg} numberOfLines={2}>{result.message || `v${APP_VERSION.display} installed · ${result.latestVersion ? `v${result.latestVersion} available` : ''}`}</Text>
         </View>
         {isForce ? (
-          <TouchableOpacity
-            style={[vb.actionBtn, { backgroundColor: color }]}
-            onPress={() => { haptics.heavy(); Linking.openURL('https://play.google.com/store/apps/details?id=com.butlerai.pc.automation').catch(() => {}); }}
-            activeOpacity={0.85}
-          >
-            <MaterialIcons name="download" size={14} color="#000" />
-            <Text style={[vb.actionTxt, { color: '#000' }]}>UPDATE</Text>
-          </TouchableOpacity>
+          <View style={{ flexDirection: 'row', gap: 6 }}>
+            <TouchableOpacity
+              onPress={() => { haptics.light(); setShowChangelog(true); }}
+              style={[vb.actionBtn, { borderColor: color + '60', backgroundColor: color + '12', borderWidth: 1 }]}
+              activeOpacity={0.8}
+            >
+              <Text style={[vb.actionTxt, { color }]}>DETAILS</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[vb.actionBtn, { backgroundColor: color }]}
+              onPress={() => { haptics.heavy(); Linking.openURL('https://play.google.com/store/apps/details?id=com.butlerai.pc.automation').catch(() => {}); }}
+              activeOpacity={0.85}
+            >
+              <MaterialIcons name="download" size={14} color="#000" />
+              <Text style={[vb.actionTxt, { color: '#000' }]}>UPDATE</Text>
+            </TouchableOpacity>
+          </View>
         ) : (
           <View style={{ flexDirection: 'row', gap: 6 }}>
             <TouchableOpacity
@@ -368,7 +446,11 @@ export function AppVersionBanner() {
               <Text style={[vb.actionTxt, { color }]}>NOTES</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              onPress={() => { haptics.light(); setDismissed(true); }}
+              onPress={() => {
+                haptics.light();
+                setDismissed(true);
+                AsyncStorage.setItem(DISMISSED_VERSION_KEY, APP_VERSION.display).catch(() => {});
+              }}
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             >
               <MaterialIcons name="close" size={16} color={C.textDim} />
