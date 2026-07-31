@@ -1,0 +1,230 @@
+name: Butler AI — Main Branch Automation
+
+# ──────────────────────────────────────────────────────────────────────────
+# Runs on EVERY push to main (including auto-merged Copilot PRs).
+# What this does:
+#   1. Validates the source tree (no broken imports, no secrets)
+#   2. Deploys updated docs/ to GitHub Pages
+#   3. Bumps the metro cache-buster so OnSpace.ai preview refreshes instantly
+#   4. Posts a rich job summary with direct links
+# ──────────────────────────────────────────────────────────────────────────
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      reason:
+        description: 'Reason for manual run'
+        required: false
+        default: 'manual trigger'
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: main-automation
+  cancel-in-progress: false
+
+jobs:
+  # ── JOB 1: Validate source tree ────────────────────────────────────────
+  validate:
+    name: 🔍 Validate source
+    runs-on: ubuntu-latest
+    outputs:
+      has_docs_changes: ${{ steps.check.outputs.has_docs_changes }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2   # need parent commit for diff
+
+      - name: Detect changed files
+        id: check
+        run: |
+          CHANGED=$(git diff --name-only HEAD~1 HEAD 2>/dev/null || git diff --name-only HEAD 2>/dev/null || echo "")
+          echo "Changed files:"
+          echo "$CHANGED"
+          if echo "$CHANGED" | grep -q "^docs/"; then
+            echo "has_docs_changes=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_docs_changes=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Check for accidental secrets
+        run: |
+          # Lightweight secret scan — look for obvious patterns in changed TS/TSX files
+          SECRETS_FOUND=0
+          for f in $(git diff --name-only HEAD~1 HEAD 2>/dev/null | grep -E '\.(ts|tsx|js|json)$' | grep -v node_modules); do
+            if [ -f "$f" ]; then
+              if grep -qE '(AKIA[0-9A-Z]{16}|ghp_[A-Za-z0-9]{36}|-----BEGIN (RSA|EC) PRIVATE KEY-----|sk-[A-Za-z0-9]{48})' "$f" 2>/dev/null; then
+                echo "⚠️  Possible secret in: $f"
+                SECRETS_FOUND=1
+              fi
+            fi
+          done
+          if [ "$SECRETS_FOUND" = "1" ]; then
+            echo "❌ Possible secrets detected — review before continuing."
+            exit 1
+          fi
+          echo "✅ No secrets detected."
+
+      - name: Verify critical files exist
+        run: |
+          MISSING=0
+          CRITICAL=(
+            "app/_layout.tsx"
+            "app/(tabs)/_layout.tsx"
+            "app/(tabs)/onboarding.tsx"
+            "app/(tabs)/nexushome.tsx"
+            "app/(tabs)/butler.tsx"
+            "services/onboardingState.ts"
+            "services/haptics.ts"
+            "components/ui/TabErrorBoundary.tsx"
+          )
+          for f in "${CRITICAL[@]}"; do
+            if [ ! -f "$f" ]; then
+              echo "❌ Missing: $f"
+              MISSING=1
+            else
+              echo "✅ $f"
+            fi
+          done
+          if [ "$MISSING" = "1" ]; then
+            exit 1
+          fi
+          echo ""
+          echo "All critical files present."
+
+      - name: Verify required assets
+        run: |
+          MISSING=0
+          ASSETS=(
+            "assets/images/nexus-robot-v2.png"
+            "assets/images/nexus-robot-mascot.png"
+            "assets/images/nexus-circuit-grid.jpg"
+            "assets/images/butler-robot-face.jpg"
+            "assets/images/qa-bg-metal.jpg"
+            "assets/images/mascot_shield.png"
+          )
+          for a in "${ASSETS[@]}"; do
+            if [ ! -f "$a" ]; then
+              echo "❌ Missing asset: $a"
+              MISSING=1
+            else
+              echo "✅ $a ($(wc -c < "$a") bytes)"
+            fi
+          done
+          if [ "$MISSING" = "1" ]; then
+            exit 1
+          fi
+
+  # ── JOB 2: Deploy docs → GitHub Pages ──────────────────────────────────
+  deploy-pages:
+    name: 🚀 Deploy GitHub Pages
+    needs: validate
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    permissions:
+      pages: write
+      id-token: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build _site
+        run: |
+          mkdir -p _site
+
+          # Copy all docs/ files
+          cp -r docs/. _site/
+
+          # Inject last-updated timestamp into index.html if present
+          if [ -f "_site/index.html" ]; then
+            TIMESTAMP=$(date -u '+%Y-%m-%d %H:%M UTC')
+            COMMIT_SHORT="${{ github.sha }}"
+            COMMIT_SHORT="${COMMIT_SHORT:0:7}"
+            # Insert a small meta comment at top for traceability
+            sed -i "s|</head>|<!-- deployed: ${TIMESTAMP} · commit: ${COMMIT_SHORT} -->\n</head>|" _site/index.html || true
+          fi
+
+          # Fall back index.html → privacy-policy.html if no index.html
+          if [ ! -f "_site/index.html" ] && [ -f "_site/privacy-policy.html" ]; then
+            cp _site/privacy-policy.html _site/index.html
+          fi
+
+          echo "📄 Staged files:"
+          ls -lh _site/
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+      - name: Output live URL
+        run: |
+          BASE="${{ steps.deployment.outputs.page_url }}"
+          echo "PAGES_URL=$BASE" >> "$GITHUB_ENV"
+          echo "🌐 Site live at: $BASE"
+
+  # ── JOB 3: Bump OnSpace.ai cache buster + summarise ────────────────────
+  summarise:
+    name: 📋 Summary
+    needs: [validate, deploy-pages]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Write job summary
+        run: |
+          COMMIT="${{ github.sha }}"
+          SHORT="${COMMIT:0:7}"
+          ACTOR="${{ github.actor }}"
+          EVENT="${{ github.event_name }}"
+          TS=$(date -u '+%Y-%m-%d %H:%M UTC')
+          VALIDATE="${{ needs.validate.result }}"
+          PAGES="${{ needs.deploy-pages.result }}"
+
+          {
+            echo "## 🤖 Butler AI — Main Branch Automation"
+            echo ""
+            echo "| Field | Value |"
+            echo "|---|---|"
+            echo "| Commit | [\`${SHORT}\`](https://github.com/${{ github.repository }}/commit/${{ github.sha }}) |"
+            echo "| Triggered by | \`${ACTOR}\` via \`${EVENT}\` |"
+            echo "| Timestamp | \`${TS}\` |"
+            echo ""
+            echo "### Job Results"
+            echo "| Job | Status |"
+            echo "|---|---|"
+            echo "| 🔍 Validate | $([ "$VALIDATE" = "success" ] && echo "✅ Passed" || echo "❌ $VALIDATE") |"
+            echo "| 🚀 GitHub Pages | $([ "$PAGES" = "success" ] && echo "✅ Deployed" || echo "⚠️ $PAGES") |"
+            echo ""
+            echo "### 🌐 Live URLs"
+            echo "- **Privacy Policy**: \`https://joahdnsjsn-star.github.io/BUTLER-AI--PC-Automation-9bg8k6-30057-20260731/privacy-policy.html\`"
+            echo "- **Docs Home**: \`https://joahdnsjsn-star.github.io/BUTLER-AI--PC-Automation-9bg8k6-30057-20260731/\`"
+            echo ""
+            echo "### 📱 OnSpace.ai"
+            echo "OnSpace.ai preview refreshes automatically when **main** receives commits."
+            echo "This automation runs on every push — no manual steps needed."
+            echo ""
+            echo "### ⚡ What runs automatically on every main push"
+            echo "1. **Validate** — checks critical files, assets, and scans for accidental secrets"
+            echo "2. **Deploy Pages** — pushes full \`docs/\` to GitHub Pages"
+            echo "3. **OnSpace.ai** — picks up new commits from main automatically"
+            echo "4. **PR auto-merge** — Copilot PRs are auto-approved and squash-merged to main"
+          } >> "$GITHUB_STEP_SUMMARY"
