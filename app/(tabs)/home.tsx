@@ -38,6 +38,7 @@ const TEAL  = '#00CCBB';
 const DIM   = '#1A2E44';
 const MID   = '#4A6880';
 const TEXT  = '#D0E8F4';
+const TEAL  = '#00CCBB';
 const MONO: any = Platform.OS === 'ios' ? 'Menlo-Bold' : 'monospace';
 const SW    = Math.max(320, Dimensions.get('window').width);
 const HALF  = (SW - 32 - 8) / 2; // card half-width
@@ -89,129 +90,320 @@ const PulseDot = memo(({ color, size = 7, delay = 0 }: { color: string; size?: n
 });
 
 // ══════════════════════════════════════════════════════════════════
-// HEADER — compact, scroll-along, scan-line sweep
+// HEADER — 3D premium redesign with depth layers and glow effects
 // ══════════════════════════════════════════════════════════════════
 const HomeHeader = memo(({ safeTop, isConn, onPair }: {
   safeTop: number; isConn: boolean; onPair: () => void;
 }) => {
-  const [hh, setHh] = useState('00:00');
-  const [ss, setSs] = useState('00');
-  const scanX = useRef(new Animated.Value(-120)).current; // native
+  const [hh, setHh]   = useState('00:00');
+  const [ss, setSs]   = useState('00');
+  const [date, setDate] = useState('');
+  const scanX  = useRef(new Animated.Value(-120)).current;
+  const glowA  = useRef(new Animated.Value(0.55)).current;
+  const ringA  = useRef(new Animated.Value(0)).current;
+  const floatY = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     const tick = () => {
       const n = new Date();
       setHh(`${String(n.getHours()).padStart(2, '0')}:${String(n.getMinutes()).padStart(2, '0')}`);
       setSs(String(n.getSeconds()).padStart(2, '0'));
+      setDate(n.toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric' }).toUpperCase());
     };
     tick();
     const t = setInterval(tick, 1000);
     return () => clearInterval(t);
   }, []);
 
+  // Scan sweep
   useEffect(() => {
     const loop = Animated.loop(Animated.sequence([
-      Animated.timing(scanX, { toValue: SW + 120, duration: 2200, useNativeDriver: true }),
+      Animated.timing(scanX, { toValue: SW + 120, duration: 2800, useNativeDriver: true }),
       Animated.timing(scanX, { toValue: -120, duration: 0, useNativeDriver: true }),
-      Animated.delay(5000),
+      Animated.delay(4500),
     ]));
     loop.start();
     return () => loop.stop();
   }, []);
 
-  const cc = isConn ? GREEN : AMBER;
+  // Glow pulse (JS driver — opacity only)
+  useEffect(() => {
+    const loop = Animated.loop(Animated.sequence([
+      Animated.timing(glowA, { toValue: 1, duration: 1800, useNativeDriver: false }),
+      Animated.timing(glowA, { toValue: 0.35, duration: 1800, useNativeDriver: false }),
+    ]));
+    loop.start();
+    return () => loop.stop();
+  }, []);
+
+  // Status ring spin (native driver)
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.timing(ringA, { toValue: 1, duration: 6000, useNativeDriver: true })
+    );
+    loop.start();
+    return () => loop.stop();
+  }, []);
+
+  // Subtle float on brand text (native driver)
+  useEffect(() => {
+    const loop = Animated.loop(Animated.sequence([
+      Animated.timing(floatY, { toValue: -3, duration: 2200, useNativeDriver: true }),
+      Animated.timing(floatY, { toValue: 0, duration: 2200, useNativeDriver: true }),
+    ]));
+    loop.start();
+    return () => loop.stop();
+  }, []);
+
+  const cc          = isConn ? GREEN : AMBER;
+  const ringRotate  = ringA.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
 
   return (
     <View style={[H.root, { paddingTop: safeTop }]}>
-      {/* 3-color accent stripe */}
-      <View style={{ height: 3, flexDirection: 'row' }}>
-        <View style={{ flex: 3, backgroundColor: CYAN }} />
-        <View style={{ flex: 2, backgroundColor: PURP }} />
-        <View style={{ flex: 2, backgroundColor: AMBER }} />
-        <View style={{ flex: 1, backgroundColor: GREEN }} />
+      {/* Deep background layer — subtle grid texture */}
+      <View style={H.bgLayer} />
+
+      {/* 5-color spectral top stripe */}
+      <View style={H.stripe}>
+        {[
+          [CYAN, 4], [PURP, 3], [AMBER, 2.5], [GREEN, 2], [BLUE, 1.5]
+        ].map(([c, f]: any, i) => (
+          <View key={i} style={{ flex: f, backgroundColor: c }} />
+        ))}
       </View>
 
-      {/* Scan sweep */}
+      {/* Scan sweep shimmer */}
       <Animated.View pointerEvents="none"
         style={[H.scan, { transform: [{ translateX: scanX }] }]} />
 
+      {/* Glow bloom behind brand (JS driver — no native conflict) */}
+      <Animated.View pointerEvents="none"
+        style={[H.bloom, { opacity: glowA }]} />
+
       <View style={H.body}>
-        {/* LEFT block */}
-        <View style={{ gap: 5, flex: 1 }}>
-          {/* Eyebrow */}
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-            <View style={[H.hexagon, { borderColor: CYAN + '60' }]}>
-              <MaterialCommunityIcons name="robot-happy" size={13} color={CYAN} />
+        {/* ── LEFT BLOCK ── */}
+        <View style={{ flex: 1, gap: 0 }}>
+
+          {/* EYEBROW row */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7, marginBottom: 6 }}>
+            {/* Robot badge */}
+            <View style={H.robotBadge}>
+              <View style={H.robotInner}>
+                <MaterialCommunityIcons name="robot-happy" size={14} color={CYAN} />
+              </View>
             </View>
-            <Text style={H.eyebrow}>NEXUS · PC COMMAND CENTER</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={H.eyebrow}>PC COMMAND CENTER</Text>
+              <Text style={H.eyeSub}>{date || 'BUTLER AI'}</Text>
+            </View>
+            {/* Spinning status ring */}
+            <View style={{ alignItems: 'center', justifyContent: 'center', width: 36, height: 36 }}>
+              <Animated.View style={[H.spinRing, {
+                borderTopColor: cc,
+                transform: [{ rotate: ringRotate }],
+              }]} />
+              <View style={[H.ringCenter, { backgroundColor: cc + '15', borderColor: cc + '50' }]}>
+                <PulseDot color={cc} size={7} />
+              </View>
+            </View>
           </View>
 
-          {/* Brand */}
-          <Text style={H.brand}>
-            <Text style={{ color: TEXT }}>BUTLER</Text>
-            <Text style={{ color: CYAN }}> AI</Text>
+          {/* 3D BRAND TEXT — floating */}
+          <Animated.View style={{ transform: [{ translateY: floatY }], marginBottom: 8 }}>
+            {/* Shadow layer (pure depth — positioned slightly behind) */}
+            <Text style={H.brandShadow} selectable={false}
+              aria-hidden>{`BUTLER AI`}</Text>
+            {/* Main brand */}
+            <Text style={H.brand}>
+              <Text style={{ color: '#FFFFFF' }}>BUTLER</Text>
+              <Text style={{ color: CYAN }}>{'  AI'}</Text>
+            </Text>
+          </Animated.View>
+
+          {/* Sub-tagline */}
+          <Text style={H.tagline} numberOfLines={1}>
+            LOCAL AI · ZERO CLOUD · FULLY PRIVATE
           </Text>
 
-          {/* Pills */}
-          <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap' }}>
+          {/* Status + badges row */}
+          <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap', marginTop: 10 }}>
             <TouchableOpacity
               onPress={() => { haptics.heavy(); onPair(); }}
-              activeOpacity={0.85}
-              style={[H.pill, { borderColor: cc + '70', backgroundColor: cc + '10' }]}>
+              activeOpacity={0.82}
+              style={[H.pill, {
+                borderColor: cc + '80',
+                backgroundColor: cc + '12',
+                ...Platform.select({ ios: { shadowColor: cc, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.4, shadowRadius: 6 }, android: { elevation: 3 } }),
+              }]}>
               <PulseDot color={cc} size={5} />
               <Text style={[H.pillTxt, { color: cc }]}>
                 {isConn ? 'CONNECTED' : 'PAIR PC'}
               </Text>
             </TouchableOpacity>
-            <View style={[H.pill, { borderColor: PURP + '50', backgroundColor: PURP + '0A' }]}>
+            <View style={[H.pill, { borderColor: PURP + '55', backgroundColor: PURP + '0C' }]}>
+              <MaterialCommunityIcons name="brain" size={9} color={PURP} />
               <Text style={[H.pillTxt, { color: PURP }]}>LOCAL AI</Text>
             </View>
-            <View style={[H.pill, { borderColor: GREEN + '40', backgroundColor: GREEN + '08' }]}>
+            <View style={[H.pill, { borderColor: GREEN + '45', backgroundColor: GREEN + '0A' }]}>
+              <MaterialCommunityIcons name="shield-check" size={9} color={GREEN} />
               <Text style={[H.pillTxt, { color: GREEN }]}>AES-256</Text>
             </View>
           </View>
         </View>
 
-        {/* RIGHT: clock */}
-        <View style={{ alignItems: 'flex-end', gap: 2 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 1 }}>
-            <Text style={H.clockMain}>{hh}</Text>
-            <Text style={[H.clockSec, { color: CYAN }]}>{ss}</Text>
+        {/* ── RIGHT BLOCK: clock ── */}
+        <View style={{ alignItems: 'flex-end', gap: 4, paddingLeft: 10 }}>
+          {/* Clock card — 3D inset look */}
+          <View style={H.clockCard}>
+            <Text style={H.clockLabel}>LOCAL TIME</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 1 }}>
+              <Text style={H.clockMain}>{hh}</Text>
+              <Text style={[H.clockSec, { color: CYAN }]}>{ss}</Text>
+            </View>
+            <View style={H.clockUnderline} />
+            <Text style={H.clockSub}>SECURE · OFFLINE</Text>
           </View>
-          <Text style={H.clockSub}>LOCAL · SECURE</Text>
-          <View style={[H.lanBadge, { borderColor: isConn ? GREEN + '55' : AMBER + '40' }]}>
+
+          {/* LAN status badge */}
+          <View style={[H.lanBadge, {
+            borderColor: cc + '60',
+            backgroundColor: cc + '0A',
+            ...Platform.select({ ios: { shadowColor: cc, shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.3, shadowRadius: 4 }, android: {} }),
+          }]}>
             <MaterialCommunityIcons
               name={isConn ? 'lan-check' : 'lan-disconnect'}
-              size={9} color={isConn ? GREEN : AMBER} />
-            <Text style={[H.lanTxt, { color: isConn ? GREEN : AMBER }]}>
-              {isConn ? 'LAN OK' : 'OFFLINE'}
+              size={10} color={cc} />
+            <Text style={[H.lanTxt, { color: cc }]}>
+              {isConn ? 'LAN · LIVE' : 'LAN · OFFLINE'}
             </Text>
           </View>
+
+          {/* Version micro-text */}
+          <Text style={H.ver}>v7.3 · BUTLER AI</Text>
         </View>
       </View>
 
-      {/* Bottom divider */}
-      <View style={H.divider} />
+      {/* Inset separator with dual color */}
+      <View style={H.divider}>
+        <View style={{ flex: 1, backgroundColor: CYAN + '40' }} />
+        <View style={{ width: 40, backgroundColor: PURP + '80' }} />
+        <View style={{ flex: 1, backgroundColor: AMBER + '30' }} />
+      </View>
+
+      {/* Metric strip at bottom of header */}
+      <View style={H.metricStrip}>
+        {[
+          { l: 'CPU',    v: isConn ? '--' : '—', c: CYAN  },
+          { l: 'RAM',    v: isConn ? '--' : '—', c: GREEN },
+          { l: 'DISK',   v: isConn ? '--' : '—', c: AMBER },
+          { l: 'NET',    v: isConn ? 'UP' : 'DOWN', c: isConn ? GREEN : RED },
+          { l: 'ENC',    v: 'ON',  c: GREEN },
+          { l: 'CLOUD',  v: 'OFF', c: TEAL  },
+        ].map((m, i) => (
+          <View key={i} style={[H.metricCell, { borderColor: m.c + (i === 0 ? '50' : '25') }]}>
+            <Text style={[H.metricVal, { color: m.c }]}>{m.v}</Text>
+            <Text style={H.metricLbl}>{m.l}</Text>
+          </View>
+        ))}
+      </View>
     </View>
   );
 });
 
 const H = StyleSheet.create({
-  root:     { backgroundColor: SURF, overflow: 'hidden',
-    ...Platform.select({ ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.45, shadowRadius: 10 }, android: { elevation: 6 } }) },
-  scan:     { position: 'absolute', top: 0, bottom: 0, width: 80, backgroundColor: CYAN + '06' },
-  body:     { flexDirection: 'row', alignItems: 'flex-start', gap: 10, paddingHorizontal: 14, paddingTop: 12, paddingBottom: 13 },
-  hexagon:  { width: 22, height: 22, borderRadius: 6, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
-  eyebrow:  { fontFamily: MONO, fontSize: 7.5, fontWeight: '700', color: CYAN + '60', letterSpacing: 2 },
-  brand:    { fontSize: 26, fontWeight: '900', letterSpacing: 0.5, lineHeight: 30 },
-  pill:     { flexDirection: 'row', alignItems: 'center', gap: 5, borderWidth: 1.5, borderRadius: 20, paddingHorizontal: 9, paddingVertical: 4 },
-  pillTxt:  { fontFamily: MONO, fontSize: 9, fontWeight: '900', letterSpacing: 0.3 },
-  clockMain:{ fontFamily: MONO, fontSize: 24, fontWeight: '900', color: TEXT, letterSpacing: 1 },
-  clockSec: { fontFamily: MONO, fontSize: 14, fontWeight: '900', letterSpacing: 0.5 },
-  clockSub: { fontFamily: MONO, fontSize: 7.5, color: MID, letterSpacing: 1, fontWeight: '700' },
-  lanBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, borderWidth: 1, borderRadius: 6, paddingHorizontal: 6, paddingVertical: 3 },
-  lanTxt:   { fontFamily: MONO, fontSize: 8, fontWeight: '900' },
-  divider:  { height: 2, backgroundColor: CYAN + '25' },
+  root: {
+    backgroundColor: '#060D18',
+    overflow: 'hidden',
+    ...Platform.select({
+      ios:     { shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.55, shadowRadius: 14 },
+      android: { elevation: 10 },
+    }),
+  },
+  bgLayer: {
+    position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+    backgroundColor: '#04090F',
+  },
+  stripe:  { height: 4, flexDirection: 'row' },
+  scan:    { position: 'absolute', top: 0, bottom: 0, width: 100, backgroundColor: CYAN + '08' },
+  bloom:   {
+    position: 'absolute', left: 0, top: 0, right: SW * 0.6, bottom: 0,
+    backgroundColor: CYAN + '07',
+  },
+  body: {
+    flexDirection: 'row', alignItems: 'flex-start', gap: 8,
+    paddingHorizontal: 14, paddingTop: 14, paddingBottom: 10,
+  },
+  robotBadge: {
+    width: 38, height: 38, borderRadius: 11, borderWidth: 2,
+    borderColor: CYAN + '50', backgroundColor: CYAN + '0E',
+    alignItems: 'center', justifyContent: 'center',
+    ...Platform.select({ ios: { shadowColor: CYAN, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.4, shadowRadius: 6 }, android: { elevation: 3 } }),
+  },
+  robotInner: { alignItems: 'center', justifyContent: 'center' },
+  eyebrow:  {
+    fontFamily: MONO, fontSize: 8, fontWeight: '700',
+    color: CYAN + '70', letterSpacing: 2.5, lineHeight: 11,
+  },
+  eyeSub: {
+    fontFamily: MONO, fontSize: 7, color: MID,
+    letterSpacing: 1.5, lineHeight: 10, marginTop: 1,
+  },
+  spinRing: {
+    position: 'absolute', width: 30, height: 30, borderRadius: 15,
+    borderWidth: 2, borderColor: 'transparent',
+    borderTopWidth: 2,
+  },
+  ringCenter: {
+    width: 18, height: 18, borderRadius: 9, borderWidth: 1.5,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  // Shadow brand text (offset for 3D depth)
+  brandShadow: {
+    position: 'absolute', top: 3, left: 2,
+    fontSize: 34, fontWeight: '900', letterSpacing: 1,
+    color: CYAN + '18', lineHeight: 40,
+  },
+  brand: {
+    fontSize: 34, fontWeight: '900', letterSpacing: 1,
+    lineHeight: 40, color: TEXT,
+  },
+  tagline: {
+    fontFamily: MONO, fontSize: 8.5, fontWeight: '700',
+    color: CYAN + '55', letterSpacing: 2, lineHeight: 12,
+  },
+  pill: {
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    borderWidth: 1.5, borderRadius: 20, paddingHorizontal: 10, paddingVertical: 5,
+  },
+  pillTxt: { fontFamily: MONO, fontSize: 9.5, fontWeight: '900', letterSpacing: 0.3 },
+  clockCard: {
+    borderWidth: 1.5, borderRadius: 12, padding: 10,
+    borderColor: CYAN + '30', backgroundColor: CYAN + '05',
+    alignItems: 'flex-end', gap: 2,
+    ...Platform.select({ ios: { shadowColor: CYAN, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 8 }, android: { elevation: 2 } }),
+  },
+  clockLabel: { fontFamily: MONO, fontSize: 7, color: CYAN + '60', fontWeight: '700', letterSpacing: 2 },
+  clockMain: { fontFamily: MONO, fontSize: 30, fontWeight: '900', color: TEXT, letterSpacing: 1.5, lineHeight: 34 },
+  clockSec:  { fontFamily: MONO, fontSize: 16, fontWeight: '900', letterSpacing: 0.5 },
+  clockUnderline: { height: 1.5, width: '100%', backgroundColor: CYAN + '35', marginVertical: 3 },
+  clockSub:  { fontFamily: MONO, fontSize: 7.5, color: MID, letterSpacing: 1, fontWeight: '700' },
+  lanBadge: {
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    borderWidth: 1.5, borderRadius: 8, paddingHorizontal: 8, paddingVertical: 5,
+  },
+  lanTxt:  { fontFamily: MONO, fontSize: 8.5, fontWeight: '900', letterSpacing: 0.3 },
+  ver:     { fontFamily: MONO, fontSize: 7, color: DIM, letterSpacing: 1 },
+  divider: { height: 2, flexDirection: 'row' },
+  metricStrip: {
+    flexDirection: 'row', paddingHorizontal: 14, paddingVertical: 9,
+    backgroundColor: '#040A12', borderTopWidth: 1, borderTopColor: DIM + '60', gap: 0,
+  },
+  metricCell: {
+    flex: 1, alignItems: 'center', borderRightWidth: 1, paddingVertical: 3,
+    gap: 2,
+  },
+  metricVal: { fontFamily: MONO, fontSize: 10, fontWeight: '900', lineHeight: 13 },
+  metricLbl: { fontFamily: MONO, fontSize: 7, color: MID, fontWeight: '700', letterSpacing: 0.5 },
 });
 
 // ══════════════════════════════════════════════════════════════════
