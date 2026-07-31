@@ -3,12 +3,11 @@
 ```
 ╔══════════════════════════════════════════════════════════════════════════╗
 ║                                                                          ║
-║   BUTLER AI — PROPRIETARY SOFTWARE                                        ║
-║   © 2025–2026 Shawn Papanek. ALL RIGHTS RESERVED.                       ║
+║   BUTLER AI — PROPRIETARY SOFTWARE                                       ║
+║   © 2024–2026 Andrej Sladkovic. ALL RIGHTS RESERVED.                    ║
 ║                                                                          ║
 ║   com.butlerai.pc.automation                                             ║
-║   Build: NX-9.0.0-20260724-PROD                                         ║
-║   Trademark Filing: SN-210694951 (Butler AI: PC Automation)             ║
+║   Build: NX-8.0.0-20260718-PROD                                         ║
 ║                                                                          ║
 ╚══════════════════════════════════════════════════════════════════════════╝
 ```
@@ -20,43 +19,15 @@
 All source code, UI designs, assets, algorithms, data structures, and documentation
 contained in this repository are the **exclusive intellectual property** of:
 
-> **Shawn Papanek**
-> Contact: shawnpapanek@butlerai.app
-> DMCA Agent: shawnpapanek@butlerai.app
+> **Andrej Sladkovic**  
+> Contact: andrejsladkovic1992@gmail.com  
+> DMCA Agent: andrejsladkovic1992@gmail.com
 
-Copyright © 2025–2026 Shawn Papanek. All rights reserved.
-
----
-
-## 2. Trademark Notice
-
-The following are trademarks of Shawn Papanek. **No trademark right is granted
-by the source-available licence or by possession of, access to, or receipt of
-any part of this software:**
-
-| Mark | Category |
-|------|----------|
-| BUTLER AI™ | Product name |
-| BOTER™ | Suite / mascot identity |
-| COMMANDCUBE™ | PC tray presence |
-| NEXUS™ | Home surface |
-| XUSLINK™ | Pairing ceremony + LAN frame protocol |
-| SCRIPTSHIELD™ | Script safety engine |
-| FITCORE™ | PC profiling + model match engine |
-| DARKBOOT™ | Signature launch ritual |
-| BUTLER MIND™ | Learning pipeline + .bmind vault |
-| VAULTPROOF™ | Live privacy ledger |
-| PULSECODE™ | Haptic grammar system |
-| Dark Matter HUD | Trade dress / visual design language |
-| Tuxedo-robot mascot | Figurative mark |
-
-A permitted personal modification of the server component may not be called
-Butler AI, may not use any of the marks above, and may not imply endorsement
-by Shawn Papanek.
+Copyright © 2024–2026 Andrej Sladkovic. All rights reserved.
 
 ---
 
-## 3. Prohibited Acts
+## 2. Prohibited Acts
 
 The following are **STRICTLY PROHIBITED** without prior written consent:
 
@@ -66,122 +37,112 @@ The following are **STRICTLY PROHIBITED** without prior written consent:
 | Reverse-engineering the compiled bundle | DMCA 17 U.S.C. § 1201 |
 | Decompiling or disassembling | EU Directive 2009/24/EC Art. 6 |
 | Creating derivative works | 17 U.S.C. § 106(2) |
-| Distributing any portion of the app | 17 U.S.C. § 106(3) |
-| Reproducing UI/UX designs (trade dress) | 17 U.S.C. § 102(a)(5) |
+| Distributing any portion | 17 U.S.C. § 106(3) |
+| Reproducing UI/UX designs | 17 U.S.C. § 102(a)(5) |
 | Reproducing proprietary algorithms | Defend Trade Secrets Act 2016 |
 | Sublicensing | 17 U.S.C. § 106(4) |
-| Commercial use without written licence | All of the above |
-| Using marks listed above | Lanham Act 15 U.S.C. §§ 1114, 1125 |
-| Training ML models on this code | Anti-AI-training clause (see §7) |
-| Hosting any part of this app as a service | Source-available licence §3 |
+| Commercial use | All of the above |
 
 ---
 
-## 4. Server Component — Source-Available (NOT Open Source)
+## 3. Protected Intellectual Property
 
-The **server component** (`butler_server.py`) is published under the
-**Butler AI Source-Available Licence v1.0** at:
+The following innovations are **protected trade secrets and copyrighted works**:
 
-> https://github.com/shawnjan-cmd/butler-server
-
-**"Source-available" is NOT the same as "open source."** The OSI definition of
-open source requires unrestricted use, redistribution and derivative works.
-The Butler AI licence explicitly prohibits competing use, hosting-as-a-service,
-and redistribution — it grants read/audit/run-locally rights only.
-
-The app itself (this codebase) is **fully proprietary** and is NOT covered by
-the server licence in any way.
-
----
-
-## 5. Protected Intellectual Property
-
-The following innovations are **protected trade secrets and/or copyrighted works**:
-
-1. **DARKBOOT™** — Signature launch ritual with fixed choreography (trade dress)
-2. **COMMANDCUBE™** — PC tray presence with Cube glyph and LAN-pulse identity
-3. **FITCORE™** — Automatic PC profiling + Ollama model match engine
-4. **XUSLINK™** — QR pairing ceremony + proprietary XUSLINK FRAME v1 protocol
-5. **House Phrase MITM defence** — 3-word session hash display at pairing
-6. **SCRIPTSHIELD™** — Static analysis + 4-tier hold-to-confirm execution gate
-7. **BUTLER MIND™** — Encrypted local learning pipeline + .bmind vault format
-8. **VAULTPROOF™** — Live outbound-traffic ledger (always-on privacy meter)
-9. **PULSECODE™** — Proprietary fixed haptic grammar (5-pattern vocabulary)
-10. **Phi-NEXUS Bridge Protocol** — DELTA+SIGMA+FUSE+OMEGA fused pipeline
-11. **SIGMA-NET Relay Crawler** — Phone-teleported PC crawl relay architecture
-12. **Quantum Link Harvester** — Entangled graph traversal URL discovery engine
-13. **OMEGA Loop Auto-Growth Engine** — 3-layer 24/7 KB autonomous expansion
-14. **Lambda Scan** — Remote PC filesystem scanner with privilege escalation guard
-15. **Persistent Checkpoint System** — SQLite-backed resume-on-restart architecture
-16. **Behavioural Profiling Engine** — user_topics priority queue personalisation
-17. **Nexus Cosmetic Pack System** — Full app re-skin via CosmeticContext runtime
-18. **Zero Hardcode Discovery** — 4-method IP + 20-port auto-detect protocol
-19. **Auto-Save AI Scripts** — Silent Python code detection from natural language
-20. **.bmind vault format** — Magic bytes BMND1 + AES-256-GCM encrypted payload
-21. **XUS-BUS animated divider protocol** — LAN heartbeat visual grammar
+1. **Phi-NEXUS Bridge Protocol** — DELTA+SIGMA+FUSE+OMEGA fused pipeline
+2. **SIGMA-NET Relay Crawler** — Phone-teleported PC crawl relay architecture
+3. **Quantum Link Harvester** — Entangled graph traversal URL discovery engine
+4. **OMEGA Loop Auto-Growth Engine** — 3-layer 24/7 KB autonomous expansion
+5. **Lambda Scan** — Remote PC filesystem scanner with privilege escalation guard
+6. **Omega Scanner Daemon** — Self-healing 8-minute cycle monitor
+7. **Persistent Checkpoint System** — SQLite-backed resume-on-restart architecture
+8. **Behavioural Profiling Engine** — user_topics priority queue personalisation
+9. **Nexus Cosmetic Pack System** — Full app re-skin via CosmeticContext runtime
+10. **Zero Hardcode Discovery** — 4-method IP + 20-port auto-detect protocol
+11. **Auto-Save AI Scripts** — Silent Python code detection from natural language chat
+12. **Pip Auto-Install + Retry Engine** — ModuleNotFoundError automatic recovery
+13. **OmegaFingerprint Execution Learning** — Imports posted to KB per run
+14. **Neural KB Level System** — XP-gated tiered AI knowledge rank
+15. **NexusBridge QR Pairing Protocol** — HMAC-signed UDP beacon device pairing
+16. **Butler AI HUD Design Language** — NEXUS cyberpunk UI aesthetic system
 
 ---
 
-## 6. Bundle Protection
+## 4. Bundle Protection
 
 The compiled JavaScript bundle is protected by multiple layers:
 
 - **Hermes Bytecode Compilation** — Source compiled to platform bytecode
-- **Terser Aggressive Minification** — All identifiers mangled
+- **Terser Aggressive Minification** — All identifiers mangled, all comments stripped
 - **Multi-layer Runtime Watermark** — XOR-encoded + byte-array ownership proof
 - **Symbol-keyed Global Fingerprint** — Not serialisable, survives JSON extraction
 - **Build Epoch Fingerprint** — Tamper-detectable timestamp hash
-- **Trademark String Lattice** — Ownership strings in compiled bundle as forensic evidence
-- **Build ID** — NX-9.0.0-20260724-PROD — present in every release
 
 Circumventing any of these protections violates the **Digital Millennium Copyright
 Act (DMCA) 17 U.S.C. § 1201** and is a federal crime.
 
 ---
 
-## 7. AI / Automated Systems Clause
-
-No permission is granted to train, fine-tune, distil, embed, index, or otherwise
-derive any machine-learning model, dataset, embedding, or AI system from this
-source code, documentation, UI text, design specifications, or any other part of
-this repository. This prohibition applies to all training methodologies including
-but not limited to supervised learning, reinforcement learning from human feedback,
-and constitutional AI methods.
-
----
-
-## 8. Legal Framework
+## 5. Legal Framework
 
 This software is protected under:
 
 - **United States**: 17 U.S.C. §§ 101–1332 (Copyright Act), DMCA 17 U.S.C. § 1201,
-  Defend Trade Secrets Act 2016 (18 U.S.C. § 1836), Lanham Act 15 U.S.C. §§ 1114, 1125
-- **European Union**: Directive 2009/24/EC, Directive 2019/790/EU
-- **International**: Berne Convention, TRIPS Agreement, WIPO Copyright Treaty 1996
+  Defend Trade Secrets Act 2016 (18 U.S.C. § 1836)
+- **European Union**: Directive 2009/24/EC on the legal protection of computer programs,
+  Directive 2019/790/EU (Copyright in the Digital Single Market)
+- **International**: Berne Convention for the Protection of Literary and Artistic Works,
+  TRIPS Agreement (WTO), WIPO Copyright Treaty 1996
 
 ---
 
-## 9. Enforcement
+## 6. Enforcement
 
 Violations will result in:
 
-- **Civil action** for injunctive relief and statutory damages
-  (up to **$150,000 per wilful infringement** — 17 U.S.C. § 504)
-- **Criminal referral** for wilful infringement (up to **5 years** — 18 U.S.C. § 2319)
-- **DMCA takedown notices** to GitHub, Google Play, Apple App Store, and any host
+- **Civil action** seeking injunctive relief and statutory damages
+  (up to **$150,000 per wilful infringement** under 17 U.S.C. § 504)
+- **Criminal referral** for wilful infringement under 17 U.S.C. § 506
+  (up to **5 years imprisonment** and **$250,000 fine** per 18 U.S.C. § 2319)
+- **DMCA takedown notices** to GitHub, Google Play Store, Apple App Store,
+  and any hosting provider
 - **Asset seizure and forfeiture** under 18 U.S.C. § 2323
-- **Trademark infringement action** under the Lanham Act
 
 ---
 
-## 10. DMCA Takedown
+## 7. DMCA Takedown Process
 
-**DMCA Agent**: Shawn Papanek
-**Email**: shawnpapanek@butlerai.app
-**Subject**: `DMCA Notice — Butler AI`
+To report a violation or submit a counter-notice:
+
+**DMCA Agent**: Andrej Sladkovic  
+**Email**: andrejsladkovic1992@gmail.com  
+**Subject line**: `DMCA Notice — Butler AI`
+
+Include: description of infringing material, URL/location, your contact information,
+and a statement of good faith belief.
 
 ---
 
-*Last updated: 2026-07-24*
-*Butler AI v9.0.0 · Build NX-9.0.0-20260724-PROD*
-*© 2025–2026 Shawn Papanek. All Rights Reserved.*
+## 8. Open-Source Server (Exception)
+
+The **server component** (`butler_server_v21_1_1_FINAL-3.py`) is separately licensed
+as open source and available at:
+
+> https://github.com/shawnjan-cmd/butler-server
+
+The open-source server licence applies **only** to that file. The app (this codebase)
+remains fully proprietary under this COPYRIGHT notice.
+
+---
+
+## 9. No Licence Granted
+
+Nothing in this repository, its documentation, or its distribution grants any licence,
+right, or permission to use, copy, modify, or distribute any part of this software,
+except as explicitly granted in writing by Andrej Sladkovic.
+
+---
+
+*Last updated: 2026-07-18*  
+*Butler AI v8.0.0 · Build NX-8.0.0-20260718-PROD*  
+*© 2024–2026 Andrej Sladkovic. All Rights Reserved.*

@@ -1,4 +1,3 @@
-
 /**
  * NexusCommandCenter — Above-the-fold BUTLER AI hero
  * ─────────────────────────────────────────────────────
@@ -173,7 +172,7 @@ export function NexusCommandCenter({
   // ── JS-DRIVER ONLY animated values (color/background) ─────────
   // These are NEVER mixed with native driver animations
   const glowColorA  = useRef(new Animated.Value(0)).current;    // color interp (JS)
-  // connBarA removed — scanFill width is driven by radarRotA (same driver group)
+  const connBarA    = useRef(new Animated.Value(0)).current;    // width% (JS)
   const radarRotA   = useRef(new Animated.Value(0)).current;    // rotation (JS — used with borderColor)
 
   const mounted = useRef(true);
@@ -182,45 +181,45 @@ export function NexusCommandCenter({
     mounted.current = true;
 
     // ── NATIVE animations ─────────────────────────────────────────
-    // Logo entrance (one-shot — no cleanup needed)
-    if (mounted.current) {
-      Animated.parallel([
-        Animated.spring(logoScaleA, { toValue: 1, tension: 120, friction: 10, useNativeDriver: true }),
-        Animated.timing(logoOpA, { toValue: 1, duration: 600, useNativeDriver: true }),
-      ]).start();
-      Animated.timing(crawlerOpA, { toValue: 1, duration: 400, delay: 800, useNativeDriver: true }).start();
-      Animated.timing(featGridOpA, { toValue: 1, duration: 400, delay: 1200, useNativeDriver: true }).start();
-      Animated.spring(connScaleA, { toValue: 1, tension: 100, friction: 8, delay: 400, useNativeDriver: true }).start();
-    }
+    // Logo entrance
+    Animated.parallel([
+      Animated.spring(logoScaleA, { toValue: 1, tension: 120, friction: 10, useNativeDriver: true }),
+      Animated.timing(logoOpA, { toValue: 1, duration: 600, useNativeDriver: true }),
+    ]).start();
 
-    // Scanline sweep (translateY — native)
+    // Crawler fade-in (delayed)
+    Animated.timing(crawlerOpA, { toValue: 1, duration: 400, delay: 800, useNativeDriver: true }).start();
+    Animated.timing(featGridOpA, { toValue: 1, duration: 400, delay: 1200, useNativeDriver: true }).start();
+    Animated.spring(connScaleA, { toValue: 1, tension: 100, friction: 8, delay: 400, useNativeDriver: true }).start();
+
+    // Scanline sweep (translateY — native is fine)
     const scanLoop = Animated.loop(Animated.sequence([
       Animated.timing(scanlineA, { toValue: 1, duration: 3000, useNativeDriver: true }),
       Animated.timing(scanlineA, { toValue: 0, duration: 0,    useNativeDriver: true }),
       Animated.delay(5000),
     ]));
-    if (mounted.current) scanLoop.start();
+    scanLoop.start();
 
     // Pulse dot (opacity — native)
     const pulseLoop = Animated.loop(Animated.sequence([
       Animated.timing(pulseDotA, { toValue: 1,   duration: 800, useNativeDriver: true }),
       Animated.timing(pulseDotA, { toValue: 0.2, duration: 800, useNativeDriver: true }),
     ]));
-    if (mounted.current) pulseLoop.start();
+    pulseLoop.start();
 
-    // ── JS animations (SEPARATE values — never mixed with native) ──
-    // Glow color cycle (JS — used for borderColor interpolation only)
+    // ── JS animations (SEPARATE values) ───────────────────────────
+    // Glow color cycle (JS — used for borderColor interpolation)
     const glowLoop = Animated.loop(Animated.sequence([
       Animated.timing(glowColorA, { toValue: 1,   duration: 2000, useNativeDriver: false }),
       Animated.timing(glowColorA, { toValue: 0.2, duration: 2000, useNativeDriver: false }),
     ]));
-    if (mounted.current) glowLoop.start();
+    glowLoop.start();
 
-    // Radar rotation (JS — used with borderColor style only)
+    // Radar rotation (JS — used with borderColor style)
     const radarLoop = Animated.loop(
       Animated.timing(radarRotA, { toValue: 1, duration: 4000, useNativeDriver: false })
     );
-    if (mounted.current) radarLoop.start();
+    radarLoop.start();
 
     return () => {
       mounted.current = false;
@@ -229,7 +228,7 @@ export function NexusCommandCenter({
       glowLoop.stop();
       radarLoop.stop();
     };
-  }, []); // <-- Missing dependency array closing bracket was the error.
+  }, []);
 
   // ── CRAWLER TERMINAL STATE ─────────────────────────────────────
   const [visibleLines, setVisibleLines] = useState<number[]>([]);
@@ -532,7 +531,7 @@ const s = StyleSheet.create({
   // Grid BG
   gridBg:    { ...StyleSheet.absoluteFillObject, zIndex: 0 },
   gridLineH: { position: 'absolute', left: 0, right: 0, height: StyleSheet.hairlineWidth, backgroundColor: 'rgba(0,229,255,0.04)' },
-  gridLineV: { position: 'absolute', top: 0, bottom: 0, left: '50%', width: StyleSheet.hairlineWidth, backgroundColor: 'rgba(0,229,255,0.04)' },
+  gridLineV: { position: 'absolute', top: 0, bottom: 0, width: StyleSheet.hairlineWidth, backgroundColor: 'rgba(0,229,255,0.04)' },
   glowBlob:  { position: 'absolute', width: 250, height: 250, borderRadius: 125 },
 
   // Scanline

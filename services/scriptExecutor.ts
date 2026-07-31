@@ -4,7 +4,6 @@
  * Handles streaming output, timeouts, and error reporting
  */
 
-import { logger } from '@/utils/logger';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { aiLogger } from './aiLogger';
 import { serverConnection } from './serverConnection';
@@ -152,7 +151,7 @@ class ScriptExecutorService {
           if (!(options as any)?._retry) {
             return this.execute(scriptCode, language, { ...options, _retry: true } as any);
           }
-        } catch (e) { logger.warn('[scriptExecutor] error:', e); }
+        } catch {}
       }
 
       const finalOutput = [output, serverError].filter(Boolean).join('\n');
@@ -202,7 +201,7 @@ class ScriptExecutorService {
     try {
       const { features } = await import('./serverFeatures');
       useStream = features.has('execute-stream');
-    } catch (e) { logger.warn('[scriptExecutor] error:', e); }
+    } catch {}
 
     if (!useStream) {
       // Legacy path — call regular execute + emit full output as one chunk
@@ -262,7 +261,7 @@ class ScriptExecutorService {
             if (j.chunk)     opts.onChunk(j.chunk);
             if (j.done)      exitCode = j.exitCode ?? 0;
             if (j.error && !j.done) opts.onChunk(`ERROR: ${j.error}\n`);
-          } catch (e) { logger.warn('[scriptExecutor] error:', e); }
+          } catch {}
         }
       }
 
@@ -323,7 +322,7 @@ class ScriptExecutorService {
       if (!features.has('scripts-upload')) {
         return { ok: false, error: 'Update your server to v8+ to enable script upload' };
       }
-    } catch (e) { logger.warn('[scriptExecutor] error:', e); }
+    } catch {}
 
     const server = await this.getServer();
     if (!server) return { ok: false, error: 'Not connected' };
