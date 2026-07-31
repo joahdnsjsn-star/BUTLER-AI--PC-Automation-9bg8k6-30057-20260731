@@ -10,17 +10,7 @@ import { CosmeticProvider } from '@/contexts/CosmeticContext';
 import { LanguageProvider } from '@/contexts/LanguageContext';
 import { TabBarProvider } from '@/contexts/TabBarContext';
 import { PurchaseProvider } from '@/contexts/PurchaseContext';
-import { runtimeErrorMonitor } from '@/services/runtimeErrorMonitor';
-import { RuntimeDiagnosticsHUD } from '@/components/ui/RuntimeDiagnosticsHUD';
-import { securityAuditEngine } from '@/services/securityAuditEngine';
-import { appHealthEngine } from '@/services/appHealthEngine';
-
-// Boot runtime monitor — installs 5 global interceptors silently
-try { runtimeErrorMonitor.init().catch(() => {}); } catch {}
-// Boot security audit engine — 13-check vulnerability scanner
-try { securityAuditEngine.init().catch(() => {}); } catch {}
-// Boot app health engine — dead code + stale storage + auto-fix
-try { appHealthEngine.init().catch(() => {}); } catch {}
+// RuntimeDiagnosticsHUD, runtimeErrorMonitor, securityAuditEngine, appHealthEngine disabled by user
 
 // NOTE: Crash log helpers live in services/bootErrorLog.ts.
 // Import them directly from there — re-exporting from _layout.tsx risks
@@ -89,11 +79,13 @@ if (typeof global !== 'undefined') {
             const safeMsg = msg.replace(/\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b/g, '[IP]')
                                .replace(/Bearer\s+\S+/gi, '[TOKEN]');
             const summary = `Butler AI crash at ${ts}: ${safeMsg}`;
+            // Use expo-clipboard (always available in Expo) — never require
+            // @react-native-clipboard/clipboard which needs manual native linking.
             try {
-              require('@react-native-clipboard/clipboard').default.setString(summary);
-            } catch (_) {
-              try { require('react-native').Clipboard.setString(summary); } catch (_2) {}
-            }
+              import('expo-clipboard').then(m => {
+                m.setStringAsync(summary).catch(() => {});
+              }).catch(() => {});
+            } catch (_) {}
           } catch (_) {}
         }).catch(() => {});
       } catch {}
@@ -178,8 +170,7 @@ export default function RootLayout() {
                       }}
                     />
                   </Stack>
-                  {/* Runtime Diagnostics HUD — floating error badge + dashboard */}
-                  <RuntimeDiagnosticsHUD />
+
                 </PurchaseProvider>
               </TabBarProvider>
             </CosmeticProvider>

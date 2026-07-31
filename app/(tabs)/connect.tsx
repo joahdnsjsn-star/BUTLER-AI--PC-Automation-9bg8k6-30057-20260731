@@ -177,7 +177,7 @@ function PlatformCard({ data, onDownload }: { data:typeof PLATFORMS[0]; onDownlo
 
 // ── SECURITY GRID ─────────────────────────────────────────────────
 function SecurityGrid() {
-  const cellW = (SW - PAD * 2 - 16) / 3;
+  const cellW = (SW - PAD * 2 - 8) / 2;
   return (
     <View style={{ flexDirection:'row', flexWrap:'wrap', gap:8 }}>
       {SECURITY_FEATURES.map((f, i) => (
