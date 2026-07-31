@@ -829,7 +829,7 @@ function KBInner() {
                 { l: 'NODES',   v: isConn ? String(total) : '0',                   c: AMBER },
                 { l: 'LINKS',   v: isConn ? `${total * 3}` : '0',                  c: CYAN  },
                 { l: 'DENSITY', v: isConn ? '0.84' : '--',                          c: PURP  },
-                { l: 'DEPTH',   v: isConn ? '6',    : '--',                         c: GREEN },
+                { l: 'DEPTH',   v: isConn ? '6' : '--',                          c: GREEN },
               ].map((m, i) => (
                 <View key={i} style={{ backgroundColor: SURF, borderRadius: 10, borderWidth: 1.5, borderLeftWidth: 3, borderLeftColor: m.c, borderColor: m.c + '25', padding: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
                   <Text style={{ fontFamily: MONO, fontSize: 8, color: MID, fontWeight: '900' }}>{m.l}</Text>
