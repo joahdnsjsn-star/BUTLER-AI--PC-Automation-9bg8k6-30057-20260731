@@ -7,6 +7,7 @@ on:
   pull_request:
     paths:
       - '**.zip'
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -27,6 +28,7 @@ jobs:
 
       - name: Find and unzip uploaded zip files
         run: |
+          set -e
           ZIP_FILES=$(find . -maxdepth 3 -name "*.zip" ! -path "./.git/*")
           if [ -z "$ZIP_FILES" ]; then
             echo "No zip files found, nothing to do."
@@ -35,10 +37,14 @@ jobs:
 
           for ZIP in $ZIP_FILES; do
             echo "📦 Unzipping: $ZIP"
-            unzip -o "$ZIP" -d .
-            echo "✅ Unzipped: $ZIP"
-            rm -f "$ZIP"
-            echo "🗑️  Removed zip: $ZIP"
+            if unzip -o "$ZIP" -d .; then
+              echo "✅ Unzipped: $ZIP"
+              rm -f "$ZIP"
+              echo "🗑️  Removed zip: $ZIP"
+            else
+              echo "❌ Failed to unzip: $ZIP — zip will NOT be deleted."
+              exit 1
+            fi
           done
 
       - name: Commit and push updated files to main
