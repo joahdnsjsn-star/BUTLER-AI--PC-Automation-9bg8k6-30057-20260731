@@ -7,7 +7,7 @@ try { require('./tools/postinstall.js'); } catch (e) {}
 const config = getDefaultConfig(__dirname);
 
 // Bump cache to force full rebuild.
-config.cacheVersion = 'butler-ai-v5.2.3-settings-export-import';
+config.cacheVersion = 'butler-ai-v5.2.4-settings-html-export-fix';
 
 // ── COPYRIGHT NOTICE SERIALIZER ───────────────────────────────────────
 // Prepends a copyright banner to the COMPILED bundle. This banner
