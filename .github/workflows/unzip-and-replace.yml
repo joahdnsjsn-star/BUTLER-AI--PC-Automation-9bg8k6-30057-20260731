@@ -4,9 +4,13 @@ on:
   push:
     paths:
       - '**.zip'
+  pull_request:
+    paths:
+      - '**.zip'
 
 permissions:
   contents: write
+  pull-requests: write
 
 jobs:
   unzip-replace:
@@ -19,10 +23,11 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           fetch-depth: 0
+          ref: ${{ github.head_ref || github.ref_name }}
 
       - name: Find and unzip uploaded zip files
         run: |
-          ZIP_FILES=$(find . -maxdepth 2 -name "*.zip" ! -path "./.git/*")
+          ZIP_FILES=$(find . -maxdepth 3 -name "*.zip" ! -path "./.git/*")
           if [ -z "$ZIP_FILES" ]; then
             echo "No zip files found, nothing to do."
             exit 0
@@ -36,7 +41,7 @@ jobs:
             echo "🗑️  Removed zip: $ZIP"
           done
 
-      - name: Commit and push updated files
+      - name: Commit and push updated files to main
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
@@ -46,7 +51,18 @@ jobs:
           if git diff --staged --quiet; then
             echo "No changes to commit."
           else
-            git commit -m "auto: unzip and replace files"
+            git commit -m "auto: unzip and replace files → OnSpace.ai preview updated"
             git push origin HEAD:main
-            echo "🚀 Changes pushed to main."
+            echo "🚀 Changes pushed to main — OnSpace.ai preview will now reflect the new files."
           fi
+
+      - name: Auto-merge PR if triggered by pull request
+        if: github.event_name == 'pull_request'
+        run: |
+          gh pr merge ${{ github.event.pull_request.number }} \
+            --auto \
+            --squash \
+            --delete-branch \
+            --repo ${{ github.repository }} || true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
