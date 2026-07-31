@@ -109,8 +109,11 @@ jobs:
             --filter="protect .env.production" \
             "${SRC}/" "./"
 
-          # Also delete the zip from the repo working directory if still present
-          rm -f "$ZIP" 2>/dev/null || true
+          # Delete any zip files in the repo so they cannot retrigger re-apply loops
+          find . -name "*.zip" \
+            -not -path "*/node_modules/*" \
+            -not -path "*/.git/*" \
+            -print -delete || true
 
           echo "Sync complete. Repo now mirrors zip exactly (plus safe zones)."
 
@@ -139,7 +142,7 @@ jobs:
             echo "Nothing changed after sync."
           else
             ZIP_NAME=$(basename "${{ steps.findzip.outputs.zip }}" .zip)
-            git commit -m "chore: exact sync from ${ZIP_NAME} [$(date -u '+%Y-%m-%d %H:%M UTC')]"
+            git commit -m "chore: exact sync from ${ZIP_NAME} [skip ci] [$(date -u '+%Y-%m-%d %H:%M UTC')]"
             git push
             echo "Done — repo is now an exact mirror of the zip. OnSpace will rebuild."
           fi

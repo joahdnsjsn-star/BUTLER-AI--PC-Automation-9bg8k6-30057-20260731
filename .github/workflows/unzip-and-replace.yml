@@ -93,7 +93,7 @@ jobs:
           if git diff --staged --quiet; then
             echo "No changes to commit."
           else
-            git commit -m "auto: unzip and replace files → OnSpace.ai preview updated"
+            git commit -m "auto: unzip and replace files → OnSpace.ai preview updated [skip ci]"
 
             if [ "${{ github.event_name }}" = "pull_request" ]; then
               # Push unzipped content back to the PR branch.
