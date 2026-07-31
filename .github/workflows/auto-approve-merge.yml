@@ -42,16 +42,19 @@ jobs:
 
       - name: Job summary
         if: always()
+        env:
+          PR_NUM: ${{ github.event.pull_request.number }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_HEAD_REF: ${{ github.head_ref }}
+          REPO: ${{ github.repository }}
         run: |
-          PR_NUM="${{ github.event.pull_request.number }}"
-          PR_TITLE="${{ github.event.pull_request.title }}"
           {
             echo "## 🔀 Auto Approve & Merge"
             echo "| Field | Value |"
             echo "|---|---|"
-            echo "| PR | [#${PR_NUM}](https://github.com/${{ github.repository }}/pull/${PR_NUM}) |"
+            echo "| PR | [#${PR_NUM}](https://github.com/${REPO}/pull/${PR_NUM}) |"
             echo "| Title | ${PR_TITLE} |"
-            echo "| Branch | \`${{ github.head_ref }}\` → \`main\` |"
+            echo "| Branch | \`${PR_HEAD_REF}\` → \`main\` |"
             echo ""
             echo "PR was approved and set to auto-merge (squash) into **main**."
             echo "OnSpace.ai preview will update once the merge completes."
