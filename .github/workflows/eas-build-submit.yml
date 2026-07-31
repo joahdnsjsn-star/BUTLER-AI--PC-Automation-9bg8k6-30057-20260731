@@ -1,0 +1,292 @@
+name: 🔨 EAS Build + 📤 Play Store Submit
+
+# ──────────────────────────────────────────────────────────────────────────
+# Fully automated Android build → Play Store pipeline.
+#
+# WHAT RUNS AUTOMATICALLY (after every zip upload lands on main):
+#   1. Check secrets are set — link you if not
+#   2. Build APK/AAB via EAS (Expo's cloud build service)
+#   3. Submit to Google Play internal track
+#
+# ONE-TIME SETUP (only needed once, ever):
+#   • EXPO_TOKEN           → https://github.com/joahdnsjsn-star/BUTLER-AI--PC-Automation-9bg8k6-30057-20260731/settings/secrets/actions/new
+#                            Get token → https://expo.dev/settings/access-tokens
+#   • GOOGLE_SERVICE_ACCOUNT_JSON → same URL above
+#                            How to create → https://github.com/r0adkll/upload-google-play#setup
+#
+# After those two secrets are set you never touch this again.
+# ──────────────────────────────────────────────────────────────────────────
+
+on:
+  push:
+    branches: [main]
+    paths:
+      # Rebuild whenever app code, assets, or build config change.
+      # Docs-only pushes are skipped to save EAS build credits.
+      - 'app/**'
+      - 'components/**'
+      - 'services/**'
+      - 'constants/**'
+      - 'contexts/**'
+      - 'hooks/**'
+      - 'utils/**'
+      - 'stubs/**'
+      - 'assets/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'eas.json'
+      - 'babel.config.js'
+      - 'metro.config.js'
+      - 'tsconfig.json'
+      - 'logger.ts'
+  workflow_dispatch:
+    inputs:
+      profile:
+        description: 'EAS build profile'
+        required: false
+        default: 'preview'
+        type: choice
+        options:
+          - preview
+          - preview-safe
+          - production
+      submit:
+        description: 'Submit to Play Store after build?'
+        required: false
+        default: 'true'
+        type: boolean
+
+concurrency:
+  # Only one build at a time — queue rather than cancel so we don't lose builds
+  group: eas-build
+  cancel-in-progress: false
+
+jobs:
+  # ── JOB 1: Verify secrets before doing any expensive work ───────────────
+  preflight:
+    name: 🔐 Preflight — check secrets
+    runs-on: ubuntu-latest
+    outputs:
+      has_expo_token:  ${{ steps.check.outputs.has_expo_token }}
+      has_google_sa:   ${{ steps.check.outputs.has_google_sa }}
+      build_profile:   ${{ steps.check.outputs.build_profile }}
+    steps:
+      - name: Check secrets and resolve profile
+        id: check
+        env:
+          EXPO_TOKEN:                  ${{ secrets.EXPO_TOKEN }}
+          GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
+          REPO:                        ${{ github.repository }}
+          INPUT_PROFILE:               ${{ github.event.inputs.profile }}
+        run: |
+          # Resolve build profile (manual override or default preview)
+          PROFILE="${INPUT_PROFILE:-preview}"
+          echo "build_profile=$PROFILE" >> "$GITHUB_OUTPUT"
+
+          # Check EXPO_TOKEN
+          if [ -n "$EXPO_TOKEN" ]; then
+            echo "has_expo_token=true"  >> "$GITHUB_OUTPUT"
+            TOKEN_STATUS="✅ Set"
+            TOKEN_ACTION="—"
+          else
+            echo "has_expo_token=false" >> "$GITHUB_OUTPUT"
+            TOKEN_STATUS="❌ **Missing — build will be skipped**"
+            TOKEN_ACTION="[Add EXPO_TOKEN](https://github.com/${REPO}/settings/secrets/actions/new) · [Get token →](https://expo.dev/settings/access-tokens)"
+          fi
+
+          # Check Google Service Account
+          if [ -n "$GOOGLE_SERVICE_ACCOUNT_JSON" ]; then
+            echo "has_google_sa=true"  >> "$GITHUB_OUTPUT"
+            SA_STATUS="✅ Set"
+            SA_ACTION="—"
+          else
+            echo "has_google_sa=false" >> "$GITHUB_OUTPUT"
+            SA_STATUS="⚠️ Missing — Play Store submit will be skipped"
+            SA_ACTION="[Add GOOGLE_SERVICE_ACCOUNT_JSON](https://github.com/${REPO}/settings/secrets/actions/new) · [How to create →](https://github.com/r0adkll/upload-google-play#setup)"
+          fi
+
+          # Write summary
+          {
+            echo "## 🔐 Build Preflight"
+            echo ""
+            echo "| Secret | Status | Action |"
+            echo "|--------|--------|--------|"
+            echo "| EXPO_TOKEN | ${TOKEN_STATUS} | ${TOKEN_ACTION} |"
+            echo "| GOOGLE_SERVICE_ACCOUNT_JSON | ${SA_STATUS} | ${SA_ACTION} |"
+            echo ""
+            echo "**Build profile:** \`${PROFILE}\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  # ── JOB 2: EAS Build ────────────────────────────────────────────────────
+  build:
+    name: 🔨 EAS Build (Android)
+    needs: preflight
+    if: needs.preflight.outputs.has_expo_token == 'true'
+    runs-on: ubuntu-latest
+    outputs:
+      build_id: ${{ steps.eas-build.outputs.build_id }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci --legacy-peer-deps
+
+      - name: Setup Expo + EAS CLI
+        uses: expo/expo-github-action@v8
+        with:
+          expo-version: latest
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: EAS Build (Android — wait for completion)
+        id: eas-build
+        env:
+          BUILD_PROFILE: ${{ needs.preflight.outputs.build_profile }}
+        run: |
+          echo "🔨 Starting EAS build — profile: ${BUILD_PROFILE}"
+
+          # Build and wait so we know pass/fail before submitting.
+          # Output is captured to a log file for URL extraction.
+          eas build \
+            --platform android \
+            --profile "$BUILD_PROFILE" \
+            --non-interactive \
+            --wait \
+            2>&1 | tee /tmp/eas-build.log
+
+          # Extract the EAS build page URL from the output
+          BUILD_URL=$(grep -oE 'https://expo\.dev/[^ ]+' /tmp/eas-build.log | tail -1 || echo "")
+          echo "build_url=$BUILD_URL" >> "$GITHUB_OUTPUT"
+
+          # Extract build ID from URL (last path segment, or use grep)
+          BUILD_ID=$(echo "$BUILD_URL" | grep -oE '[a-f0-9-]{36}$' || true)
+          echo "build_id=$BUILD_ID" >> "$GITHUB_OUTPUT"
+
+          echo ""
+          echo "✅ Build complete"
+          [ -n "$BUILD_URL" ] && echo "📦 Build URL: $BUILD_URL"
+
+      - name: Build summary
+        if: always()
+        env:
+          BUILD_URL:     ${{ steps.eas-build.outputs.build_url }}
+          BUILD_PROFILE: ${{ needs.preflight.outputs.build_profile }}
+          REPO:          ${{ github.repository }}
+        run: |
+          STATUS="${{ job.status }}"
+          ICON="$( [ "$STATUS" = 'success' ] && echo '✅' || echo '❌' )"
+          {
+            echo "## 🔨 EAS Build"
+            echo ""
+            echo "| Field | Value |"
+            echo "|-------|-------|"
+            echo "| Status | ${ICON} ${STATUS} |"
+            echo "| Profile | \`${BUILD_PROFILE}\` |"
+            echo "| Platform | Android |"
+            if [ -n "$BUILD_URL" ]; then
+              echo "| Build | [View on Expo →](${BUILD_URL}) |"
+            fi
+            echo "| Commit | [\`${GITHUB_SHA:0:7}\`](https://github.com/${REPO}/commit/${GITHUB_SHA}) |"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  # ── JOB 3: Play Store Submit ─────────────────────────────────────────────
+  submit:
+    name: 📤 Submit → Google Play
+    needs: [preflight, build]
+    if: >
+      needs.preflight.outputs.has_expo_token == 'true' &&
+      needs.preflight.outputs.has_google_sa == 'true' &&
+      github.event.inputs.submit != 'false' &&
+      needs.build.result == 'success'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci --legacy-peer-deps
+
+      - name: Setup Expo + EAS CLI
+        uses: expo/expo-github-action@v8
+        with:
+          expo-version: latest
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Write Google service account key
+        run: |
+          echo '${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}' > ./google-play-service-account.json
+
+      - name: EAS Submit → Play Store internal track
+        run: |
+          eas submit \
+            --platform android \
+            --profile internal \
+            --latest \
+            --non-interactive
+
+      - name: Clean up service account file
+        if: always()
+        run: rm -f ./google-play-service-account.json
+
+      - name: Submit summary
+        if: always()
+        run: |
+          STATUS="${{ job.status }}"
+          ICON="$( [ "$STATUS" = 'success' ] && echo '✅' || echo '❌' )"
+          {
+            echo "## 📤 Play Store Submit"
+            echo ""
+            echo "| Field | Value |"
+            echo "|-------|-------|"
+            echo "| Status | ${ICON} ${STATUS} |"
+            echo "| Track | internal |"
+            echo "| Console | [Open Play Console →](https://play.google.com/console) |"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  # ── JOB 4: Final pipeline summary ────────────────────────────────────────
+  summary:
+    name: 📋 Pipeline Summary
+    needs: [preflight, build, submit]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Write final summary
+        env:
+          PREFLIGHT: ${{ needs.preflight.result }}
+          BUILD:     ${{ needs.build.result }}
+          SUBMIT:    ${{ needs.submit.result }}
+          REPO:      ${{ github.repository }}
+        run: |
+          icon() { [ "$1" = "success" ] && echo "✅" || ([ "$1" = "skipped" ] && echo "⏭️" || echo "❌"); }
+          {
+            echo "## 🤖 Butler AI — Build Pipeline"
+            echo ""
+            echo "| Stage | Result |"
+            echo "|-------|--------|"
+            echo "| 🔐 Preflight | $(icon $PREFLIGHT) ${PREFLIGHT} |"
+            echo "| 🔨 EAS Build | $(icon $BUILD) ${BUILD} |"
+            echo "| 📤 Play Store | $(icon $SUBMIT) ${SUBMIT} |"
+            echo ""
+            echo "**Triggered by:** commit [\`${GITHUB_SHA:0:7}\`](https://github.com/${REPO}/commit/${GITHUB_SHA})"
+            echo ""
+            if [ "$BUILD" = "skipped" ]; then
+              echo "> ⚠️ Build was skipped. Set **EXPO_TOKEN** to enable automatic builds."
+              echo "> 👉 [Add secrets](https://github.com/${REPO}/settings/secrets/actions/new)"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"

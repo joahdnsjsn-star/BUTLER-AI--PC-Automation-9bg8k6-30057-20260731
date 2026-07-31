@@ -1,0 +1,143 @@
+name: ⚙️ Settings Check — Unfilled Placeholders & Missing Secrets
+
+# ──────────────────────────────────────────────────────────────────────────
+# Runs on every push so you are ALWAYS told if something needs your attention.
+# This job NEVER blocks the pipeline — it only informs you.
+# Every issue includes a direct clickable link to fix it.
+# ──────────────────────────────────────────────────────────────────────────
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  check:
+    name: 🔍 Check settings & secrets
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # ── 1. Scan source files for known unfilled placeholders ─────────────
+      - name: Scan for unfilled placeholders
+        id: placeholders
+        env:
+          REPO: ${{ github.repository }}
+        run: |
+          ISSUES=0
+          OUT=""
+
+          # eas.json — Apple Team ID
+          if grep -q '"YOUR_APPLE_TEAM_ID"' eas.json 2>/dev/null; then
+            ISSUES=$((ISSUES + 1))
+            OUT="${OUT}| ❌ Apple Team ID | \`eas.json\` line 101 | [Edit file](https://github.com/${REPO}/edit/main/eas.json) · [Find your ID](https://developer.apple.com/account/#/membership) |\n"
+          fi
+
+          # Any remaining YOUR_ tokens in non-doc, non-node files
+          EXTRA=$(grep -rn '"YOUR_[A-Z_]*"' \
+            --include="*.json" --include="*.ts" --include="*.tsx" --include="*.js" \
+            --exclude-dir=node_modules --exclude-dir=.git \
+            . 2>/dev/null \
+            | grep -v 'eas\.json.*YOUR_APPLE_TEAM_ID' \
+            | grep -v 'dataSafety\|OLLAMA_PRODUCTION\|YOUR_PC_IP\|YOUR_MODULE' \
+            | head -10 || true)
+          if [ -n "$EXTRA" ]; then
+            while IFS= read -r line; do
+              FILE=$(echo "$line" | cut -d: -f1 | sed 's|^\./||')
+              LINENO=$(echo "$line" | cut -d: -f2)
+              ISSUES=$((ISSUES + 1))
+              OUT="${OUT}| ❌ Unfilled placeholder | \`${FILE}\` line ${LINENO} | [Edit file](https://github.com/${REPO}/edit/main/${FILE}) |\n"
+            done <<< "$EXTRA"
+          fi
+
+          echo "count=$ISSUES" >> "$GITHUB_OUTPUT"
+          {
+            echo "rows<<ENDROWS"
+            echo -e "$OUT"
+            echo "ENDROWS"
+          } >> "$GITHUB_OUTPUT"
+
+      # ── 2. Check required GitHub secrets ────────────────────────────────
+      - name: Check required secrets
+        id: secrets
+        env:
+          EXPO_TOKEN:                   ${{ secrets.EXPO_TOKEN }}
+          GOOGLE_SERVICE_ACCOUNT_JSON:  ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
+          REPO:                         ${{ github.repository }}
+        run: |
+          MISSING=0
+          OUT=""
+          ADD_URL="https://github.com/${REPO}/settings/secrets/actions/new"
+
+          if [ -z "$EXPO_TOKEN" ]; then
+            MISSING=$((MISSING + 1))
+            OUT="${OUT}| ❌ EXPO_TOKEN | EAS builds are **skipped** without this | [Add secret](${ADD_URL}) · [Get token →](https://expo.dev/settings/access-tokens) |\n"
+          else
+            OUT="${OUT}| ✅ EXPO_TOKEN | Set | — |\n"
+          fi
+
+          if [ -z "$GOOGLE_SERVICE_ACCOUNT_JSON" ]; then
+            MISSING=$((MISSING + 1))
+            OUT="${OUT}| ⚠️ GOOGLE_SERVICE_ACCOUNT_JSON | Play Store submit is **skipped** without this | [Add secret](${ADD_URL}) · [How to create →](https://github.com/r0adkll/upload-google-play#setup) |\n"
+          else
+            OUT="${OUT}| ✅ GOOGLE_SERVICE_ACCOUNT_JSON | Set | — |\n"
+          fi
+
+          echo "missing=$MISSING" >> "$GITHUB_OUTPUT"
+          {
+            echo "rows<<ENDROWS"
+            echo -e "$OUT"
+            echo "ENDROWS"
+          } >> "$GITHUB_OUTPUT"
+
+      # ── 3. Write the summary ─────────────────────────────────────────────
+      - name: Write job summary
+        env:
+          PLACEHOLDER_COUNT: ${{ steps.placeholders.outputs.count }}
+          PLACEHOLDER_ROWS:  ${{ steps.placeholders.outputs.rows }}
+          SECRET_MISSING:    ${{ steps.secrets.outputs.missing }}
+          SECRET_ROWS:       ${{ steps.secrets.outputs.rows }}
+          REPO:              ${{ github.repository }}
+        run: |
+          TOTAL=$((PLACEHOLDER_COUNT + SECRET_MISSING))
+          {
+            echo "## ⚙️ Settings Check"
+            echo ""
+            if [ "$TOTAL" = "0" ]; then
+              echo "### ✅ Everything is configured — you're fully automated!"
+              echo ""
+              echo "No unfilled placeholders. All required secrets are set."
+              echo "Every zip you upload now builds and deploys without any manual steps."
+            else
+              echo "### ⚠️ ${TOTAL} item(s) need your attention"
+              echo ""
+              echo "**You only need to fix these ONCE.** After that, every zip upload"
+              echo "builds and deploys to the Play Store with zero manual steps."
+              echo ""
+
+              if [ "$PLACEHOLDER_COUNT" -gt "0" ]; then
+                echo "#### 📝 Unfilled placeholders in source files"
+                echo ""
+                echo "| Status | Location | Action |"
+                echo "|--------|----------|--------|"
+                echo -e "$PLACEHOLDER_ROWS"
+                echo ""
+              fi
+
+              echo "#### 🔐 Required GitHub Secrets"
+              echo ""
+              echo "| Status | Secret | Action |"
+              echo "|--------|--------|--------|"
+              echo -e "$SECRET_ROWS"
+              echo ""
+              echo "---"
+              echo "> **How to add a secret:**"
+              echo "> 1. Click an **Add secret** link above"
+              echo "> 2. Paste the value"
+              echo "> 3. Click **Add secret** — done. The next zip upload will use it automatically."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
