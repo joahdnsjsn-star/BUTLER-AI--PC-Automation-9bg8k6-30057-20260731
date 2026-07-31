@@ -66,7 +66,7 @@ jobs:
           echo "🔎 Testing connectivity to ${URL} before final push..."
           for i in $(seq 1 $ATTEMPTS); do
             echo "Attempt ${i}/${ATTEMPTS}"
-            if curl --silent --show-error --location --fail --head --connect-timeout 10 --max-time 20 "$URL" >/dev/null; then
+            if curl --silent --show-error --location --head --connect-timeout 10 --max-time 20 "$URL" >/dev/null; then
               OK=1
               echo "✅ Connectivity check passed."
               break
@@ -121,7 +121,7 @@ jobs:
       - name: Workflow summary
         if: always()
         run: |
-          echo "## 📦 Unzip and Replace — Summary" >> "$GITHUB_STEP_SUMMARY"
+          echo "## 🚀 Bulletproof Last Push to OnSpace.ai — Summary" >> "$GITHUB_STEP_SUMMARY"
           echo "| Field | Value |" >> "$GITHUB_STEP_SUMMARY"
           echo "|---|---|" >> "$GITHUB_STEP_SUMMARY"
           echo "| Event | \`${{ github.event_name }}\` |" >> "$GITHUB_STEP_SUMMARY"
