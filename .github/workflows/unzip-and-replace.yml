@@ -1,4 +1,4 @@
-name: Unzip and Replace Files
+name: Bulletproof Last Push to OnSpace.ai
 
 on:
   push:
@@ -54,6 +54,34 @@ jobs:
           done
           echo "changed=true" >> "$GITHUB_OUTPUT"
 
+      - name: Bulletproof sync test connection to OnSpace.ai
+        if: steps.unzip.outputs.changed == 'true'
+        run: |
+          set -e
+          URL="https://onspace.ai"
+          ATTEMPTS=5
+          DELAY=5
+          OK=0
+
+          echo "🔎 Testing connectivity to ${URL} before final push..."
+          for i in $(seq 1 $ATTEMPTS); do
+            echo "Attempt ${i}/${ATTEMPTS}"
+            if curl --silent --show-error --location --head --connect-timeout 10 --max-time 20 "$URL" >/dev/null; then
+              OK=1
+              echo "✅ Connectivity check passed."
+              break
+            fi
+            if [ "$i" -lt "$ATTEMPTS" ]; then
+              echo "⏳ Connectivity check failed, retrying in ${DELAY}s..."
+              sleep "$DELAY"
+            fi
+          done
+
+          if [ "$OK" -ne 1 ]; then
+            echo "❌ Could not reach ${URL}. Blocking push to keep OnSpace.ai sync bulletproof."
+            exit 1
+          fi
+
       - name: Commit and push updated files
         if: steps.unzip.outputs.changed == 'true'
         run: |
@@ -93,7 +121,7 @@ jobs:
       - name: Workflow summary
         if: always()
         run: |
-          echo "## 📦 Unzip and Replace — Summary" >> "$GITHUB_STEP_SUMMARY"
+          echo "## 🚀 Bulletproof Last Push to OnSpace.ai — Summary" >> "$GITHUB_STEP_SUMMARY"
           echo "| Field | Value |" >> "$GITHUB_STEP_SUMMARY"
           echo "|---|---|" >> "$GITHUB_STEP_SUMMARY"
           echo "| Event | \`${{ github.event_name }}\` |" >> "$GITHUB_STEP_SUMMARY"
@@ -101,3 +129,4 @@ jobs:
           echo "| Files changed | \`${{ steps.unzip.outputs.changed }}\` |" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
           echo "OnSpace.ai preview updates automatically when **main** receives new commits." >> "$GITHUB_STEP_SUMMARY"
+          echo "Bulletproof sync guard: connection to https://onspace.ai is tested before push." >> "$GITHUB_STEP_SUMMARY"
