@@ -1,0 +1,52 @@
+name: Unzip and Replace Files
+
+on:
+  push:
+    paths:
+      - '**.zip'
+
+permissions:
+  contents: write
+
+jobs:
+  unzip-replace:
+    name: Unzip uploaded archive and replace files
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Find and unzip uploaded zip files
+        run: |
+          ZIP_FILES=$(find . -maxdepth 2 -name "*.zip" ! -path "./.git/*")
+          if [ -z "$ZIP_FILES" ]; then
+            echo "No zip files found, nothing to do."
+            exit 0
+          fi
+
+          for ZIP in $ZIP_FILES; do
+            echo "📦 Unzipping: $ZIP"
+            unzip -o "$ZIP" -d .
+            echo "✅ Unzipped: $ZIP"
+            rm -f "$ZIP"
+            echo "🗑️  Removed zip: $ZIP"
+          done
+
+      - name: Commit and push updated files
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git add -A
+
+          if git diff --staged --quiet; then
+            echo "No changes to commit."
+          else
+            git commit -m "auto: unzip and replace files"
+            git push origin HEAD:main
+            echo "🚀 Changes pushed to main."
+          fi
