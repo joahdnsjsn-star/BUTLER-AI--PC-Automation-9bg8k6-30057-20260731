@@ -8,6 +8,7 @@ import {
   View, Text, TouchableOpacity, StyleSheet, Platform, Animated, Dimensions,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { haptics } from '@/services/haptics';
 import { autoErrorLogger } from '@/services/autoErrorLogger';
@@ -35,13 +36,14 @@ export function clearButlerUnread() {
 (global as any).__clearButlerUnread      = clearButlerUnread;
 
 // ── CONSTANTS ─────────────────────────────────────────────────────
-const HIDDEN_TABS = new Set(['onboarding', 'index', 'nexushome']);
+const HIDDEN_TABS = new Set(['onboarding', 'index']);
 
 const TAB_ALIASES: Record<string, string> = {
-  home: 'butler', core: 'butler', nexushome: 'butler',
+  home: 'nexushome', core: 'nexushome',
 };
 
 const TAB_META: Record<string, { color: string; label: string }> = {
+  nexushome: { color: D.primary, label: 'HOME'  },
   scripts:   { color: D.violet, label: 'FORGE' },
   butler:    { color: D.primary, label: 'AI'   },
   knowledge: { color: D.violet, label: 'KB'    },
@@ -82,6 +84,7 @@ function getLabel(name: string) { return TAB_META[name]?.label ?? name.slice(0, 
 function renderIcon(name: string, color: string, active: boolean) {
   const p = { size: ICON_SIZE, color, active, dimOpacity: 0.9 };
   switch (name) {
+    case 'nexushome':  return <NexusCoreIcon       {...p} />;
     case 'scripts':    return <ForgeScriptsIcon   {...p} />;
     case 'butler':     return <ButlerAIIcon        {...p} />;
     case 'knowledge':  return <KnowledgeBaseIcon   {...p} />;
@@ -91,7 +94,7 @@ function renderIcon(name: string, color: string, active: boolean) {
     case 'settings':   return <ConfigIcon          {...p} />;
     case 'cosmetic':   return <SkinsIcon           {...p} />;
     case 'connect':    return <PairIcon size={ICON_SIZE} color={color} />;
-    case 'downloads':  return <NexusCoreIcon       {...p} />;
+    case 'downloads':  return <MaterialCommunityIcons name="download-circle" size={ICON_SIZE} color={color} />;
     default:           return <ButlerAIIcon        {...p} />;
   }
 }
