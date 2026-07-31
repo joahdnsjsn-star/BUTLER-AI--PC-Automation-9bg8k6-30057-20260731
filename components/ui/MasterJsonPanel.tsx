@@ -72,29 +72,18 @@ async function safeSetClipboard(text: string): Promise<void> {
   try { await AsyncStorage.setItem(CLIP_STORAGE_KEY, text); } catch {}
 }
 
-async function safeGetClipboard(): Promise<string> {
-  // Try RN Clipboard first (older RN)
-  try {
-    const RNC = (require('react-native') as any).Clipboard;
-    if (typeof RNC?.getString === 'function') {
-      const val = await RNC.getString();
-      if (val && val.trim().length > 0) return val;
-    }
-  } catch {}
-  // Fall back to AsyncStorage
-  try { return (await AsyncStorage.getItem(CLIP_STORAGE_KEY)) || ''; } catch {}
-  return '';
-}
-
 // ─────────────────────────────────────────────────────────────────────────────
 // QUEUE TYPES
 // ─────────────────────────────────────────────────────────────────────────────
 type JobStatus = 'pending' | 'running' | 'done' | 'error' | 'skipped';
+type ImportOrigin = 'file-upload' | 'clipboard' | 'auto-restore';
+const FILE_UPLOAD_ONLY_MSG = 'Blocked: changes can only be applied from file uploads.';
 
 interface QueueJob {
   id: string;
   label: string;
   json: Record<string, any>;
+  origin: ImportOrigin;
   status: JobStatus;
   applied?: string[];
   error?: string;
@@ -839,10 +828,10 @@ export function MasterJsonPanel({ onApplied, accent = C.cyan }: Props) {
   }, []);
 
   // ── Add job to queue ────────────────────────────────────────────────────
-  const addToQueue = useCallback((json: Record<string, any>, label: string) => {
+  const addToQueue = useCallback((json: Record<string, any>, label: string, origin: ImportOrigin) => {
     const fileCount = json.source_export ? Object.keys(json.source_export).length : 0;
     const job: QueueJob = {
-      id: makeJobId(), label, json, status: 'pending',
+      id: makeJobId(), label, json, origin, status: 'pending',
       fileCount, addedAt: Date.now(), conflicts: [],
     };
     setQueue(prev => {
@@ -864,7 +853,7 @@ export function MasterJsonPanel({ onApplied, accent = C.cyan }: Props) {
   // ── Run the full queue sequentially ────────────────────────────────────
   const runQueue = useCallback(async () => {
     if (queueRunning) return;
-    const pending = queueRef.current.filter(j => j.status === 'pending');
+    const pending = queueRef.current.filter(j => j.status === 'pending' && j.origin === 'file-upload');
     if (pending.length === 0) return;
 
     setQueueRunning(true);
@@ -893,6 +882,7 @@ export function MasterJsonPanel({ onApplied, accent = C.cyan }: Props) {
         id: makeJobId(),
         label: `MERGED (${pending.length}) — ${labels.slice(0, 2).join(', ')}${labels.length > 2 ? '…' : ''}`,
         json: merged,
+        origin: 'file-upload',
         status: 'pending',
         fileCount: merged.source_export ? Object.keys(merged.source_export).length : 0,
         addedAt: Date.now(),
@@ -933,8 +923,11 @@ export function MasterJsonPanel({ onApplied, accent = C.cyan }: Props) {
 
   // ── Core runImport (single job, non-queue path) ─────────────────────────
   const runImport = useCallback(async (
-    json: Record<string, any>, label: string, onDone: (applied: string[]) => void,
+    json: Record<string, any>, label: string, origin: ImportOrigin, onDone: (applied: string[]) => void,
   ) => {
+    if (origin !== 'file-upload') {
+      throw new Error(FILE_UPLOAD_ONLY_MSG);
+    }
     const preState = await captureStateSnapshot();
     await jsonGuard.pushUndo(`Before: ${label}`, preState);
     const guard = await jsonGuard.analyzeImport(json, label);
@@ -959,7 +952,7 @@ export function MasterJsonPanel({ onApplied, accent = C.cyan }: Props) {
       } else { filteredJson[k] = v; }
     }
     let applied: string[] = [];
-    await runImport(filteredJson, label, (a) => { applied = a; });
+    await runImport(filteredJson, label, 'file-upload', (a) => { applied = a; });
     const okCount = applied.filter(a => !a.startsWith('\u26A0')).length;
     setStatusMsg(`${selected.length} files applied · ${okCount} changes · caches cleared`);
     setStatusOk(true); setImportDone(true); haptics.success();
@@ -1026,7 +1019,7 @@ export function MasterJsonPanel({ onApplied, accent = C.cyan }: Props) {
           let raw = await FileSystem.readAsStringAsync(fileUri, { encoding: FileSystem.EncodingType.UTF8 });
           const parsed = await parseRawJson(raw);
           if (!parsed.ok || !parsed.json) { errors++; continue; }
-          addToQueue(parsed.json, 'File: ' + fileName);
+          addToQueue(parsed.json, 'File: ' + fileName, 'file-upload');
           added++;
         } catch { errors++; }
       }
@@ -1081,7 +1074,7 @@ export function MasterJsonPanel({ onApplied, accent = C.cyan }: Props) {
         setSelectModal(true); setFileImporting(false); return;
       }
       let applied: string[] = [];
-      await runImport(json, label, (a) => { applied = a; });
+      await runImport(json, label, 'file-upload', (a) => { applied = a; });
       const okCount = applied.filter(a => !a.startsWith('\u26A0')).length;
       setStatusMsg(`Imported ${fileName} · ${okCount} changes applied`);
       setStatusOk(true); setImportDone(true); haptics.success();
@@ -1098,26 +1091,8 @@ export function MasterJsonPanel({ onApplied, accent = C.cyan }: Props) {
     if (pasteImporting) return;
     haptics.medium(); setPasteImporting(true); setStatusMsg(''); setLastWarnings(null);
     try {
-      const raw = await safeGetClipboard();
-      const parsed = await parseRawJson(raw);
-      if (!parsed.ok || !parsed.json) {
-        if (!raw) setStatusMsg('Clipboard is empty — copy a JSON export first');
-        else setStatusMsg('Not valid JSON: ' + (parsed.error || ''));
-        setStatusOk(false); setPasteImporting(false); return;
-      }
-      const json = parsed.json;
-      const checklist = await buildChecklist(json);
-      if (checklist.length >= 3) {
-        setFileChecklist(checklist); setPendingImportJson(json); setPendingLabel('Clipboard Paste');
-        setSelectModal(true); setPasteImporting(false); return;
-      }
-      let applied: string[] = [];
-      await runImport(json, 'Clipboard Paste', (a) => { applied = a; });
-      const okCount = applied.filter(a => !a.startsWith('\u26A0')).length;
-      setStatusMsg(`Clipboard import applied · ${okCount} changes`);
-      setStatusOk(true); setImportDone(true); haptics.success();
-      onApplied?.(applied);
-      setTimeout(() => { setImportDone(false); setStatusMsg(''); }, 8000);
+      setStatusMsg(FILE_UPLOAD_ONLY_MSG);
+      setStatusOk(false); haptics.warning();
     } catch (e: any) {
       setStatusMsg('Paste import failed: ' + (e?.message || 'Unknown'));
       setStatusOk(false); haptics.warning();
@@ -1128,22 +1103,13 @@ export function MasterJsonPanel({ onApplied, accent = C.cyan }: Props) {
   const handlePasteToQueue = useCallback(async () => {
     haptics.medium();
     try {
-      const raw = await safeGetClipboard();
-      const parsed = await parseRawJson(raw);
-      if (!parsed.ok || !parsed.json) {
-        setStatusMsg(!raw ? 'Clipboard empty' : 'Not valid JSON: ' + (parsed.error || ''));
-        setStatusOk(false); return;
-      }
-      const ts = new Date().toLocaleTimeString([], { hour:'2-digit', minute:'2-digit', second:'2-digit' });
-      addToQueue(parsed.json, 'Clipboard · ' + ts);
-      setStatusMsg('Added clipboard JSON to queue');
-      setStatusOk(true); setActiveTab('queue'); haptics.success();
-      setTimeout(() => setStatusMsg(''), 4000);
+      setStatusMsg(FILE_UPLOAD_ONLY_MSG);
+      setStatusOk(false); haptics.warning();
     } catch (e: any) {
       setStatusMsg('Paste to queue failed: ' + (e?.message || ''));
       setStatusOk(false);
     }
-  }, [addToQueue]);
+  }, []);
 
   // ── COPY FOR AI ────────────────────────────────────────────────────────
   const handleCopyForAI = useCallback(async () => {
@@ -1219,15 +1185,8 @@ export function MasterJsonPanel({ onApplied, accent = C.cyan }: Props) {
     if (restoringAuto) return;
     haptics.medium(); setRestoringAuto(true);
     try {
-      const path = (FileSystem.documentDirectory || '') + 'butler_exports/auto_save_latest.json';
-      const raw = await FileSystem.readAsStringAsync(path, { encoding: FileSystem.EncodingType.UTF8 });
-      const json = JSON.parse(raw);
-      const guard = await jsonGuard.analyzeImport(json, 'Auto-Save Restore');
-      if (guard.warnings.length > 0) setLastWarnings(guard);
-      let applied: string[] = [];
-      await runImport(json, 'Auto-Save Restore', (a) => { applied = a; });
-      setStatusMsg(`Auto-save restored · ${applied.length} changes applied`);
-      setStatusOk(true); haptics.success();
+      setStatusMsg(FILE_UPLOAD_ONLY_MSG);
+      setStatusOk(false); haptics.warning();
     } catch (e: any) {
       setStatusMsg('Auto-save restore failed: ' + (e?.message || ''));
       setStatusOk(false);
