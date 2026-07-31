@@ -1,18 +1,18 @@
 /**
- * BUTLER AI — HOME v3.0
- * Centered single-line header, reference-image 2×2 grid, download CTA,
- * file transfer quick zone, metrics strip, alerts panel.
+ * BUTLER AI — HOME v4 · Knowledge-style layout
+ * Same header pattern as KnowledgeBase: amber stripe, scan, eyebrow, tabs
+ * 4 tabs: OVERVIEW · METRICS · TELEMETRY · ACTIONS
  * © 2026 Andrej Sladkovic — ALL RIGHTS RESERVED
  */
 import React, {
   useState, useEffect, useRef, useCallback, useMemo, memo,
 } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  Animated, Platform, Dimensions, Linking, RefreshControl,
+  View, Text, StyleSheet, ScrollView, FlatList, TouchableOpacity,
+  Animated, Platform, Dimensions, Linking, RefreshControl, TextInput,
 } from 'react-native';
-import { MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import Svg, { Line, Circle } from 'react-native-svg';
+import { MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from 'expo-router';
 import { TabErrorBoundary } from '@/components/ui/TabErrorBoundary';
@@ -20,439 +20,543 @@ import { serverConnection } from '@/services/serverConnection';
 import { knowledgeAccumulator } from '@/services/knowledgeAccumulator';
 import { haptics } from '@/services/haptics';
 
-// ── Palette ──────────────────────────────────────────────────────
-const BG    = '#060D18';
-const SURF  = '#0A1520';
-const SURF2 = '#0D1C2C';
+// ── Palette (matches knowledge.tsx exactly) ───────────────────────
+const BG    = '#050C14';
+const SURF  = '#08111C';
+const SURF2 = '#0B1826';
+const SURF3 = '#0E1F30';
+const AMBER = '#FFB020';
 const CYAN  = '#00E5FF';
 const GREEN = '#00FF9D';
-const AMBER = '#FFB020';
-const RED   = '#FF3D5A';
 const PURP  = '#CC44FF';
-const BLUE  = '#4A8DFF';
 const TEAL  = '#00CCBB';
+const BLUE  = '#4A8DFF';
+const RED   = '#FF3D5A';
 const DIM   = '#1A2E44';
 const MID   = '#4A6880';
 const TEXT  = '#D0E8F4';
 const MONO: any = Platform.OS === 'ios' ? 'Menlo-Bold' : 'monospace';
 const SW    = Math.max(320, Dimensions.get('window').width);
-const HALF  = (SW - 32 - 10) / 2;
+const HALF  = (SW - 32 - 8) / 2;
 
-// ── PulseDot ─────────────────────────────────────────────────────
-const PulseDot = memo(({ color, size = 7, delay = 0 }: { color: string; size?: number; delay?: number }) => {
+// ── PulseDot ──────────────────────────────────────────────────────
+const PulseDot = memo(({ color, size = 6 }: { color: string; size?: number }) => {
   const a = useRef(new Animated.Value(0.3)).current;
   useEffect(() => {
     const loop = Animated.loop(Animated.sequence([
-      Animated.delay(delay),
-      Animated.timing(a, { toValue: 1, duration: 700, useNativeDriver: true }),
-      Animated.timing(a, { toValue: 0.2, duration: 700, useNativeDriver: true }),
+      Animated.timing(a, { toValue: 1, duration: 800, useNativeDriver: true }),
+      Animated.timing(a, { toValue: 0.2, duration: 800, useNativeDriver: true }),
     ]));
     loop.start(); return () => loop.stop();
   }, []);
   return <Animated.View style={{ width: size, height: size, borderRadius: size / 2, backgroundColor: color, opacity: a }} />;
 });
 
-// ══════════════════════════════════════════════════════════════════
-// HEADER — compact, single-line, centered "BUTLER AI"
-// ══════════════════════════════════════════════════════════════════
-const HomeHeader = memo(({ safeTop, isConn, onPair }: {
-  safeTop: number; isConn: boolean; onPair: () => void;
+// ════════════════════════════════════════════════════════════════
+// HEADER — exact knowledge base style, home context
+// ════════════════════════════════════════════════════════════════
+const HomeHeader = memo(({ safeTop, isConn, tab, onTabChange, onPair }: {
+  safeTop: number; isConn: boolean;
+  tab: string; onTabChange: (t: string) => void;
+  onPair: () => void;
 }) => {
-  const [time, setTime] = useState('--:--:--');
+  const [hh, setHh] = useState('--:--');
+  const [ss, setSs] = useState('--');
   const scanX = useRef(new Animated.Value(-SW)).current;
-  const glowA = useRef(new Animated.Value(0.4)).current;
 
   useEffect(() => {
     const tick = () => {
       const n = new Date();
-      setTime(`${String(n.getHours()).padStart(2, '0')}:${String(n.getMinutes()).padStart(2, '0')}:${String(n.getSeconds()).padStart(2, '0')}`);
+      setHh(`${String(n.getHours()).padStart(2, '0')}:${String(n.getMinutes()).padStart(2, '0')}`);
+      setSs(String(n.getSeconds()).padStart(2, '0'));
     };
     tick();
-    const t = setInterval(tick, 1000);
-    return () => clearInterval(t);
+    const t = setInterval(tick, 1000); return () => clearInterval(t);
   }, []);
 
   useEffect(() => {
     const loop = Animated.loop(Animated.sequence([
-      Animated.timing(scanX, { toValue: SW + 100, duration: 2800, useNativeDriver: true }),
+      Animated.timing(scanX, { toValue: SW + 120, duration: 2600, useNativeDriver: true }),
       Animated.timing(scanX, { toValue: -SW, duration: 0, useNativeDriver: true }),
-      Animated.delay(5000),
+      Animated.delay(6000),
     ]));
     loop.start(); return () => loop.stop();
   }, []);
 
-  useEffect(() => {
-    const loop = Animated.loop(Animated.sequence([
-      Animated.timing(glowA, { toValue: 1, duration: 1800, useNativeDriver: false }),
-      Animated.timing(glowA, { toValue: 0.2, duration: 1800, useNativeDriver: false }),
-    ]));
-    loop.start(); return () => loop.stop();
-  }, []);
+  const TABS = [
+    { key: 'overview',   label: 'OVERVIEW',  icon: 'view-dashboard-outline', color: CYAN  },
+    { key: 'metrics',    label: 'METRICS',   icon: 'chart-areaspline',       color: GREEN },
+    { key: 'telemetry',  label: 'TELEMETRY', icon: 'satellite-variant',      color: PURP  },
+    { key: 'actions',    label: 'ACTIONS',   icon: 'lightning-bolt-outline',  color: AMBER },
+  ];
 
   const cc = isConn ? GREEN : AMBER;
 
   return (
-    <View style={[H.root, { paddingTop: safeTop + 2 }]}>
-      {/* 5-color accent stripe */}
-      <View style={H.stripe}>
-        {[CYAN, PURP, AMBER, GREEN, BLUE].map((c, i) => (
-          <View key={i} style={{ flex: 1, backgroundColor: c }} />
-        ))}
+    <View style={[HH.root, { paddingTop: safeTop }]}>
+      <View style={{ height: 3, backgroundColor: CYAN }} />
+      <Animated.View pointerEvents="none" style={[HH.scan, { transform: [{ translateX: scanX }] }]} />
+      <View style={HH.body}>
+        <View style={{ flex: 1, gap: 4 }}>
+          <Text style={HH.eye}>SELF-HOSTED · PRIVATE · ZERO CLOUD</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <MaterialCommunityIcons name="robot-happy" size={18} color={CYAN} />
+            <Text style={HH.title}>BUTLER <Text style={{ color: CYAN }}>AI</Text></Text>
+          </View>
+          <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap' }}>
+            <TouchableOpacity onPress={() => { haptics.medium(); onPair(); }} activeOpacity={0.8}
+              style={[HH.pill, { borderColor: cc + '70', backgroundColor: cc + '12' }]}>
+              <PulseDot color={cc} size={5} />
+              <Text style={[HH.pTxt, { color: cc }]}>{isConn ? 'CONNECTED' : 'PAIR PC'}</Text>
+            </TouchableOpacity>
+            <View style={[HH.pill, { borderColor: PURP + '40', backgroundColor: PURP + '08' }]}>
+              <MaterialCommunityIcons name="shield-lock-outline" size={9} color={PURP} />
+              <Text style={[HH.pTxt, { color: PURP }]}>AES-256</Text>
+            </View>
+            <View style={[HH.pill, { borderColor: CYAN + '30', backgroundColor: CYAN + '08' }]}>
+              <Text style={[HH.pTxt, { color: CYAN }]}>LAN ONLY</Text>
+            </View>
+          </View>
+        </View>
+        <View style={{ alignItems: 'flex-end', gap: 3 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 1 }}>
+            <Text style={[HH.cBig, { color: TEXT }]}>{hh}</Text>
+            <Text style={{ fontFamily: MONO, fontSize: 14, fontWeight: '900', color: CYAN }}>{ss}</Text>
+          </View>
+          <Text style={HH.cSub}>LOCAL · SECURE</Text>
+        </View>
       </View>
-      {/* Scan shimmer */}
-      <Animated.View pointerEvents="none" style={[H.scan, { transform: [{ translateX: scanX }] }]} />
+      {/* Tab bar — identical to knowledge page */}
+      <View style={{ flexDirection: 'row', borderTopWidth: 1, borderTopColor: DIM + '50' }}>
+        {TABS.map(t => {
+          const active = tab === t.key;
+          return (
+            <TouchableOpacity key={t.key} onPress={() => { haptics.light(); onTabChange(t.key); }} activeOpacity={0.8}
+              style={{ flex: 1, alignItems: 'center', paddingVertical: 9, gap: 3,
+                borderBottomWidth: 2.5, borderBottomColor: active ? t.color : 'transparent' }}>
+              <MaterialCommunityIcons name={t.icon as any} size={13} color={active ? t.color : MID} />
+              <Text style={{ fontFamily: MONO, fontSize: 7.5, fontWeight: '900', color: active ? t.color : MID, letterSpacing: 0.3 }}>
+                {t.label}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+    </View>
+  );
+});
+const HH = StyleSheet.create({
+  root:  { backgroundColor: '#080C0E', overflow: 'hidden' },
+  scan:  { position: 'absolute', top: 0, bottom: 0, width: 80, backgroundColor: CYAN + '07' },
+  body:  { flexDirection: 'row', alignItems: 'flex-start', paddingHorizontal: 14, paddingTop: 11, paddingBottom: 10, gap: 10, zIndex: 1 },
+  eye:   { fontFamily: MONO, fontSize: 7.5, color: CYAN + '60', letterSpacing: 1.5, fontWeight: '700' },
+  title: { fontSize: 22, fontWeight: '900', color: '#FFF' },
+  pill:  { flexDirection: 'row', alignItems: 'center', gap: 5, borderWidth: 1.5, borderRadius: 20, paddingHorizontal: 9, paddingVertical: 4 },
+  pTxt:  { fontFamily: MONO, fontSize: 9, fontWeight: '900' },
+  cBig:  { fontFamily: MONO, fontSize: 22, fontWeight: '900', letterSpacing: 1 },
+  cSub:  { fontFamily: MONO, fontSize: 7, color: MID, letterSpacing: 1 },
+});
 
-      {/* CENTERED brand row */}
-      <View style={H.centerRow}>
-        <MaterialCommunityIcons name="robot-happy" size={19} color={CYAN} />
-        <Text style={H.brand}> BUTLER</Text>
-        <Text style={[H.brand, { color: CYAN }]}> AI</Text>
-        <TouchableOpacity onPress={() => { haptics.medium(); onPair(); }} activeOpacity={0.8}
-          style={[H.statusPill, { borderColor: cc + '70', backgroundColor: cc + '10', marginLeft: 10 }]}>
+// ════════════════════════════════════════════════════════════════
+// OVERVIEW TAB
+// ════════════════════════════════════════════════════════════════
+
+// PC Status engine card (matches SelfLearningEngine style)
+const PCStatusEngine = memo(({ isConn, onPair }: { isConn: boolean; onPair: () => void }) => {
+  const spinA = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.timing(spinA, { toValue: 1, duration: 3000, useNativeDriver: true })
+    );
+    if (isConn) loop.start(); return () => loop.stop();
+  }, [isConn]);
+  const rot = spinA.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
+  const cc = isConn ? GREEN : AMBER;
+
+  return (
+    <View style={[PE.root, { borderColor: cc + '40' }]}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+        <Animated.View style={{ transform: [{ rotate: isConn ? rot : '0deg' }] }}>
+          <View style={[PE.iconBox, { borderColor: cc + '50', backgroundColor: cc + '10' }]}>
+            <MaterialCommunityIcons name="server-network" size={22} color={cc} />
+          </View>
+        </Animated.View>
+        <View style={{ flex: 1 }}>
+          <Text style={{ fontFamily: MONO, fontSize: 13, fontWeight: '900', color: TEXT }}>
+            PC AUTOMATION ENGINE
+          </Text>
+          <Text style={{ fontFamily: MONO, fontSize: 9.5, color: MID, marginTop: 3 }}>
+            {isConn ? 'BUTLER SERVER ACTIVE — FULL CONTROL' : 'PC OFFLINE — TAP TO PAIR'}
+          </Text>
+        </View>
+        <TouchableOpacity onPress={() => { haptics.medium(); onPair(); }} activeOpacity={0.85}
+          style={[PE.statusBadge, { borderColor: cc + '60', backgroundColor: cc + '10' }]}>
           <PulseDot color={cc} size={5} />
-          <Text style={[H.statusTxt, { color: cc }]}>{isConn ? 'LIVE' : 'PAIR PC'}</Text>
+          <Text style={{ fontFamily: MONO, fontSize: 8.5, color: cc, fontWeight: '900' }}>
+            {isConn ? 'LIVE' : 'PAIR'}
+          </Text>
         </TouchableOpacity>
       </View>
-
-      {/* Centered sub-row */}
-      <View style={H.subLine}>
-        <Text style={H.subTxt}>{time}</Text>
-        <View style={H.dot} />
-        <Text style={H.subTxt}>v7.3</Text>
-        <View style={H.dot} />
-        <Text style={H.subTxt}>LOCAL · ZERO CLOUD</Text>
-      </View>
-
-      {/* Glow divider */}
-      <Animated.View style={[H.glowDiv, { opacity: glowA }]} />
     </View>
   );
 });
-
-const H = StyleSheet.create({
-  root:       { backgroundColor: '#060D18', overflow: 'hidden', alignItems: 'center',
-    ...Platform.select({ ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 5 }, shadowOpacity: 0.55, shadowRadius: 12 }, android: { elevation: 9 } }) },
-  stripe:     { height: 3.5, flexDirection: 'row', width: '100%' },
-  scan:       { position: 'absolute', top: 0, bottom: 0, width: 90, backgroundColor: CYAN + '09' },
-  centerRow:  { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingTop: 10, paddingBottom: 5, paddingHorizontal: 16 },
-  brand:      { fontSize: 22, fontWeight: '900', color: '#FFF', letterSpacing: 0.5 },
-  statusPill: { flexDirection: 'row', alignItems: 'center', gap: 5, borderWidth: 1.5, borderRadius: 20, paddingHorizontal: 9, paddingVertical: 4 },
-  statusTxt:  { fontFamily: MONO, fontSize: 9, fontWeight: '900', letterSpacing: 0.5 },
-  subLine:    { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingBottom: 9 },
-  subTxt:     { fontFamily: MONO, fontSize: 8.5, color: MID, letterSpacing: 0.5 },
-  dot:        { width: 3, height: 3, borderRadius: 1.5, backgroundColor: DIM },
-  glowDiv:    { height: 1.5, width: '100%', backgroundColor: CYAN },
+const PE = StyleSheet.create({
+  root:        { backgroundColor: SURF, borderRadius: 14, borderWidth: 1.5, padding: 14 },
+  iconBox:     { width: 48, height: 48, borderRadius: 13, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+  statusBadge: { flexDirection: 'row', alignItems: 'center', gap: 5, borderWidth: 1.5, borderRadius: 10, paddingHorizontal: 9, paddingVertical: 6 },
 });
 
-// ══════════════════════════════════════════════════════════════════
-// 2×2 TELEMETRY GRID — Reference image style, large bold status text
-// ══════════════════════════════════════════════════════════════════
-const MiniBarChart = memo(({ bars, color, h = 30 }: { bars: number[]; color: string; h?: number }) => (
-  <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 2, height: h, flex: 1 }}>
-    {bars.map((v, i) => (
-      <View key={i} style={{ flex: 1, height: Math.max(2, (v / 100) * h), borderRadius: 2,
-        backgroundColor: i === bars.length - 1 ? color + 'EE' : color + '30' }} />
-    ))}
-  </View>
-));
-
-// Reusable big-text telemetry card (matches reference image)
-const TCard = memo(({ label, icon, color, bigText, sub, onPress, children, h = 160 }: {
-  label: string; icon: string; color: string;
-  bigText: string; sub: string; onPress?: () => void;
-  children?: React.ReactNode; h?: number;
+// 4-stat grid (matches KBStatsGrid style)
+const HomeStatsGrid = memo(({ isConn, cpu, ram, disk, kbCount }: {
+  isConn: boolean; cpu: number; ram: number; disk: number; kbCount: number;
 }) => {
-  const scaleA = useRef(new Animated.Value(1)).current;
-  const handlePressIn = () => {
-    if (!onPress) return;
-    Animated.timing(scaleA, { toValue: 0.96, duration: 70, useNativeDriver: true }).start();
-  };
-  const handlePressOut = () => {
-    Animated.spring(scaleA, { toValue: 1, tension: 300, friction: 10, useNativeDriver: true }).start();
-  };
-  return (
-    <TouchableOpacity activeOpacity={onPress ? 0.85 : 1} onPressIn={handlePressIn}
-      onPressOut={handlePressOut} onPress={() => { onPress?.(); haptics.medium(); }}
-      style={{ width: HALF }}>
-      <Animated.View style={[TC.card, { borderTopColor: color, borderColor: color + '28', height: h, transform: [{ scale: scaleA }] }]}>
-        <View style={TC.hdr}>
-          <MaterialCommunityIcons name={icon as any} size={11} color={color} />
-          <Text style={[TC.hdrTxt, { color }]}>{label}</Text>
-          <View style={{ flex: 1 }} />
-          <PulseDot color={color} size={6} />
-        </View>
-        <Text style={[TC.bigTxt, { color }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.5}>
-          {bigText}
-        </Text>
-        <Text style={TC.subTxt} numberOfLines={1}>{sub}</Text>
-        {children}
-      </Animated.View>
-    </TouchableOpacity>
-  );
-});
-const TC = StyleSheet.create({
-  card:   { backgroundColor: SURF, borderRadius: 16, borderWidth: 1.5, borderTopWidth: 3,
-    padding: 12, gap: 3,
-    ...Platform.select({ ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.4, shadowRadius: 10 }, android: { elevation: 4 } }) },
-  hdr:    { flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 2 },
-  hdrTxt: { fontFamily: MONO, fontSize: 8.5, fontWeight: '900', letterSpacing: 0.8 },
-  bigTxt: { fontFamily: MONO, fontSize: 36, fontWeight: '900', letterSpacing: -1, lineHeight: 42 },
-  subTxt: { fontFamily: MONO, fontSize: 9.5, color: MID, lineHeight: 13 },
-});
-
-const PCCard = memo(({ isConn, cpu, ram, onPair }: {
-  isConn: boolean; cpu: number; ram: number; onPair: () => void;
-}) => (
-  <TCard label="CONNECTED PC" icon="desktop-classic" color={isConn ? GREEN : AMBER}
-    bigText={isConn ? 'ONLINE' : 'OFFLINE'}
-    sub={isConn ? 'Butler Server Active' : 'Tap PAIR to connect'}
-    onPress={onPair}
-  >
-    <View style={{ flexDirection: 'row', gap: 14, marginTop: 6 }}>
-      <View>
-        <Text style={{ fontFamily: MONO, fontSize: 8, color: MID }}>CPU</Text>
-        <Text style={{ fontFamily: MONO, fontSize: 15, color: isConn ? GREEN : DIM, fontWeight: '900' }}>
-          {isConn ? `${Math.round(cpu)}%` : '—'}
-        </Text>
-      </View>
-      <View>
-        <Text style={{ fontFamily: MONO, fontSize: 8, color: MID }}>RAM</Text>
-        <Text style={{ fontFamily: MONO, fontSize: 15, color: isConn ? CYAN : DIM, fontWeight: '900' }}>
-          {isConn ? `${Math.round(ram)}%` : '—'}
-        </Text>
-      </View>
-    </View>
-  </TCard>
-));
-
-const LiveFeedCard = memo(({ isConn }: { isConn: boolean }) => {
-  const bars = useMemo(() =>
-    Array.from({ length: 12 }, (_, i) => 15 + i * 5.5 + Math.random() * 18), []);
-  return (
-    <TCard label="LIVE FEED" icon="pulse" color={PURP}
-      bigText={isConn ? 'ACTIVE' : 'STANDBY'}
-      sub={isConn ? 'Data streaming live' : 'Awaiting connection'}
-    >
-      <MiniBarChart bars={bars} color={isConn ? PURP : DIM} />
-    </TCard>
-  );
-});
-
-const CrawlerCard = memo(({ isConn, kbCount }: { isConn: boolean; kbCount: number }) => {
-  const bars = useMemo(() =>
-    Array.from({ length: 12 }, (_, i) => 8 + i * 6.5 + Math.random() * 14), []);
-  const entities = isConn && kbCount > 0 ? kbCount * 1000 : 0;
-  const fmt = (n: number) => n >= 1000 ? `${(n / 1000).toFixed(0)}K` : (n === 0 ? '—' : String(n));
-  return (
-    <TCard label="CRAWLER GRAPH" icon="chart-timeline-variant" color={TEAL}
-      bigText={fmt(entities)}
-      sub="ENTITIES INDEXED"
-    >
-      <MiniBarChart bars={bars} color={isConn ? TEAL : DIM} />
-    </TCard>
-  );
-});
-
-const KBCard = memo(({ isConn, kbCount }: { isConn: boolean; kbCount: number }) => {
-  const fmt = (n: number) => n >= 1000 ? `${(n / 1000).toFixed(0)}K` : (n === 0 ? '—' : String(n));
-  const CATS = [
-    { l: 'Py', c: CYAN }, { l: 'Sys', c: GREEN }, { l: 'Net', c: AMBER }, { l: 'AI', c: PURP }
+  const cells = [
+    { label: 'CPU',      val: isConn ? `${Math.round(cpu)}%` : '--', color: CYAN,  icon: 'cpu-64-bit' },
+    { label: 'RAM',      val: isConn ? `${Math.round(ram)}%` : '--', color: GREEN, icon: 'memory' },
+    { label: 'DISK',     val: isConn ? `${Math.round(disk)}%` : '--',color: AMBER, icon: 'harddisk' },
+    { label: 'KB FACTS', val: isConn ? String(kbCount || 0) : '--', color: PURP,  icon: 'brain' },
   ];
   return (
-    <TCard label="KNOWLEDGE" icon="brain" color={GREEN}
-      bigText={fmt(isConn && kbCount > 0 ? kbCount : 0)}
-      sub="FACTS INDEXED"
-    >
-      <View style={{ flexDirection: 'row', gap: 4, marginTop: 5 }}>
-        {CATS.map(c => (
-          <View key={c.l} style={{ borderWidth: 1.5, borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2,
-            borderColor: c.c + (isConn ? '55' : '18'), backgroundColor: c.c + (isConn ? '10' : '04') }}>
-            <Text style={{ fontFamily: MONO, fontSize: 9, fontWeight: '900', color: isConn ? c.c : MID }}>{c.l}</Text>
-          </View>
-        ))}
-      </View>
-    </TCard>
-  );
-});
-
-// ══════════════════════════════════════════════════════════════════
-// QUICK ACTIONS — 6 icon buttons
-// ══════════════════════════════════════════════════════════════════
-const QUICK_ACTIONS = [
-  { icon: 'qr-code-scanner',  label: 'PAIR',    tab: 'connect',   color: TEAL  },
-  { icon: 'robot-happy',      label: 'AI CHAT', tab: 'butler',    color: PURP  },
-  { icon: 'code-braces',      label: 'SCRIPTS', tab: 'scripts',   color: CYAN  },
-  { icon: 'folder-network',   label: 'FILES',   tab: 'fileshare', color: AMBER },
-  { icon: 'chart-bar',        label: 'LOGS',    tab: 'logs',      color: BLUE  },
-  { icon: 'brain',            label: 'KB',      tab: 'knowledge', color: GREEN },
-] as const;
-
-const QuickActions = memo(({ goToTab }: { goToTab: (t: string) => void }) => (
-  <View style={{ flexDirection: 'row', gap: 6 }}>
-    {QUICK_ACTIONS.map((a, i) => (
-      <TouchableOpacity key={i}
-        onPress={() => { haptics.light(); goToTab(a.tab); }}
-        activeOpacity={0.82}
-        style={{ flex: 1, alignItems: 'center', gap: 5, paddingVertical: 10,
-          borderWidth: 1.5, borderRadius: 12, borderColor: a.color + '38', backgroundColor: a.color + '08' }}>
-        <MaterialCommunityIcons name={a.icon as any} size={19} color={a.color} />
-        <Text style={{ fontFamily: MONO, fontSize: 6.5, fontWeight: '900', color: a.color + 'AA' }}>
-          {a.label}
-        </Text>
-      </TouchableOpacity>
-    ))}
-  </View>
-));
-
-// ══════════════════════════════════════════════════════════════════
-// DOWNLOAD SERVER CTA
-// ══════════════════════════════════════════════════════════════════
-const DownloadCTA = memo(({ goToTab }: { goToTab: (t: string) => void }) => {
-  const pulse = useRef(new Animated.Value(1)).current;
-  useEffect(() => {
-    const loop = Animated.loop(Animated.sequence([
-      Animated.timing(pulse, { toValue: 1.02, duration: 1500, useNativeDriver: true }),
-      Animated.timing(pulse, { toValue: 1, duration: 1500, useNativeDriver: true }),
-    ]));
-    loop.start(); return () => loop.stop();
-  }, []);
-  return (
-    <Animated.View style={{ transform: [{ scale: pulse }] }}>
-      <TouchableOpacity
-        onPress={() => {
-          haptics.heavy();
-          Linking.openURL('https://github.com/shawnjan-cmd/butler-server/releases/latest').catch(() => goToTab('connect'));
-        }}
-        activeOpacity={0.87}
-        style={[DL.card, { borderColor: CYAN + '55', backgroundColor: CYAN + '09' }]}>
-        <View style={[DL.iconBox, { borderColor: CYAN + '55', backgroundColor: CYAN + '16' }]}>
-          <MaterialCommunityIcons name="download-circle-outline" size={30} color={CYAN} />
-        </View>
-        <View style={{ flex: 1, gap: 3 }}>
-          <Text style={DL.title}>DOWNLOAD SERVER</Text>
-          <Text style={DL.sub}>butler_server.py · Free · Open Source · Auto-Setup</Text>
-          <View style={{ flexDirection: 'row', gap: 5, marginTop: 3 }}>
-            {['LAN ONLY', 'AES-256', 'ZERO CLOUD', 'FREE'].map((b, i) => (
-              <View key={i} style={{ borderWidth: 1, borderRadius: 4, paddingHorizontal: 5, paddingVertical: 2, borderColor: CYAN + '30' }}>
-                <Text style={{ fontFamily: MONO, fontSize: 6.5, color: CYAN + '70', fontWeight: '900' }}>{b}</Text>
-              </View>
-            ))}
-          </View>
-        </View>
-        <MaterialIcons name="open-in-new" size={18} color={CYAN + '70'} />
-      </TouchableOpacity>
-    </Animated.View>
-  );
-});
-const DL = StyleSheet.create({
-  card:    { borderWidth: 1.5, borderRadius: 16, padding: 14, flexDirection: 'row', alignItems: 'center', gap: 12,
-    ...Platform.select({ ios: { shadowColor: CYAN, shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.15, shadowRadius: 8 }, android: { elevation: 3 } }) },
-  iconBox: { width: 54, height: 54, borderRadius: 15, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
-  title:   { fontFamily: MONO, fontSize: 14, fontWeight: '900', color: TEXT },
-  sub:     { fontFamily: MONO, fontSize: 9, color: MID },
-});
-
-// ══════════════════════════════════════════════════════════════════
-// SYSTEM METRICS STRIP
-// ══════════════════════════════════════════════════════════════════
-const MetricsStrip = memo(({ isConn, cpu, ram, disk }: {
-  isConn: boolean; cpu: number; ram: number; disk: number;
-}) => {
-  const items = [
-    { l: 'CPU',  v: cpu,  c: CYAN  },
-    { l: 'RAM',  v: ram,  c: GREEN },
-    { l: 'DISK', v: disk, c: AMBER },
-  ];
-  return (
-    <View style={MS.root}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}>
-        <MaterialCommunityIcons name="chip" size={11} color={CYAN} />
-        <Text style={{ fontFamily: MONO, fontSize: 9, color: CYAN + '90', fontWeight: '900', letterSpacing: 1.5, marginLeft: 6, flex: 1 }}>
-          SYSTEM METRICS
-        </Text>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
-          <PulseDot color={isConn ? GREEN : AMBER} size={5} />
-          <Text style={{ fontFamily: MONO, fontSize: 8, color: isConn ? GREEN : AMBER, fontWeight: '900' }}>
-            {isConn ? 'LIVE' : 'STANDBY'}
-          </Text>
-        </View>
-      </View>
-      {items.map(m => (
-        <View key={m.l} style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 7 }}>
-          <Text style={{ fontFamily: MONO, fontSize: 8.5, color: m.c, fontWeight: '900', width: 32 }}>{m.l}</Text>
-          <View style={{ flex: 1, height: 6, borderRadius: 3, backgroundColor: DIM, overflow: 'hidden' }}>
-            <View style={{
-              width: isConn ? `${Math.max(3, Math.round(m.v))}%` as any : '3%',
-              height: '100%', borderRadius: 3,
-              backgroundColor: m.c + (isConn ? 'DD' : '28'),
-            }} />
-          </View>
-          <Text style={{ fontFamily: MONO, fontSize: 11, fontWeight: '900', color: isConn ? m.c : DIM, width: 38, textAlign: 'right' }}>
-            {isConn ? `${Math.round(m.v)}%` : '—'}
-          </Text>
+    <View style={{ flexDirection: 'row', gap: 8 }}>
+      {cells.map((c, i) => (
+        <View key={i} style={[GS.cell, { borderTopColor: c.color, borderColor: c.color + '28' }]}>
+          <MaterialCommunityIcons name={c.icon as any} size={14} color={c.color + '80'} />
+          <Text style={[GS.val, { color: isConn ? c.color : MID }]}>{c.val}</Text>
+          <Text style={GS.label}>{c.label}</Text>
         </View>
       ))}
     </View>
   );
 });
-const MS = StyleSheet.create({
-  root: { backgroundColor: SURF, borderRadius: 14, borderWidth: 1.5, borderColor: DIM + '60', padding: 14 },
+const GS = StyleSheet.create({
+  cell:  { flex: 1, backgroundColor: SURF, borderRadius: 12, borderWidth: 1.5, borderTopWidth: 2.5, padding: 10, alignItems: 'center', gap: 4,
+    ...Platform.select({ ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.3, shadowRadius: 5 }, android: { elevation: 3 } }) },
+  val:   { fontFamily: MONO, fontSize: 17, fontWeight: '900', lineHeight: 21 },
+  label: { fontFamily: MONO, fontSize: 7, color: MID, fontWeight: '900', letterSpacing: 0.8 },
 });
 
-// ══════════════════════════════════════════════════════════════════
-// FILE TRANSFER QUICK ZONE
-// ══════════════════════════════════════════════════════════════════
-const FileTransferQuick = memo(({ isConn, goToTab }: { isConn: boolean; goToTab: (t: string) => void }) => (
-  <TouchableOpacity onPress={() => { haptics.medium(); goToTab('fileshare'); }} activeOpacity={0.87}>
-    <View style={[FT.root, { borderColor: PURP + '38' }]}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: isConn ? 10 : 0 }}>
-        <View style={[FT.icon, { borderColor: PURP + '45', backgroundColor: PURP + '12' }]}>
-          <MaterialCommunityIcons name="folder-network" size={24} color={PURP} />
+// Download CTA card (matches NeuralVectorStore style — big number replaced with icon+title)
+const DownloadCTA = memo(() => {
+  const pulse = useRef(new Animated.Value(0.4)).current;
+  useEffect(() => {
+    const loop = Animated.loop(Animated.sequence([
+      Animated.timing(pulse, { toValue: 1, duration: 1600, useNativeDriver: false }),
+      Animated.timing(pulse, { toValue: 0.2, duration: 1600, useNativeDriver: false }),
+    ]));
+    loop.start(); return () => loop.stop();
+  }, []);
+
+  return (
+    <TouchableOpacity
+      onPress={() => { haptics.heavy(); Linking.openURL('https://github.com/shawnjan-cmd/butler-server/releases/latest').catch(() => {}); }}
+      activeOpacity={0.87}
+      style={[DC.root, { borderColor: CYAN + '40' }]}>
+      <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 4 }}>
+        <View style={{ flex: 1 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7, marginBottom: 5 }}>
+            <MaterialCommunityIcons name="download-circle-outline" size={13} color={CYAN} />
+            <Text style={{ fontFamily: MONO, fontSize: 9.5, color: CYAN + '90', fontWeight: '900', letterSpacing: 1 }}>BUTLER SERVER</Text>
+            <Text style={{ fontFamily: MONO, fontSize: 8, color: MID }}>· SETUP GUIDE</Text>
+          </View>
+          <Text style={{ fontFamily: MONO, fontSize: 30, fontWeight: '900', color: CYAN, lineHeight: 34 }}>
+            DOWNLOAD
+          </Text>
+          <Text style={{ fontFamily: MONO, fontSize: 9, color: MID, marginTop: 2 }}>butler_server.py · FREE · OPEN SOURCE</Text>
+        </View>
+        <Animated.View style={[DC.badge, { borderColor: CYAN + '55', backgroundColor: CYAN + '0C', opacity: pulse }]}>
+          <PulseDot color={CYAN} size={5} />
+          <Text style={{ fontFamily: MONO, fontSize: 9, fontWeight: '900', color: CYAN }}>FREE</Text>
+        </Animated.View>
+      </View>
+      <View style={{ flexDirection: 'row', gap: 6, marginTop: 6 }}>
+        {['LAN ONLY', 'AES-256', 'ZERO CLOUD', 'AUTO-SETUP'].map((b, i) => (
+          <View key={i} style={{ borderWidth: 1, borderRadius: 5, paddingHorizontal: 6, paddingVertical: 2, borderColor: CYAN + '30' }}>
+            <Text style={{ fontFamily: MONO, fontSize: 7, color: CYAN + '70', fontWeight: '900' }}>{b}</Text>
+          </View>
+        ))}
+      </View>
+    </TouchableOpacity>
+  );
+});
+const DC = StyleSheet.create({
+  root:  { backgroundColor: SURF, borderRadius: 14, borderWidth: 1.5, padding: 14 },
+  badge: { flexDirection: 'row', alignItems: 'center', gap: 5, borderWidth: 1.5, borderRadius: 10, paddingHorizontal: 9, paddingVertical: 6, flexShrink: 0 },
+});
+
+// Knowledge graph (reused from KB page style)
+const HomeNeuralGraph = memo(({ isConn, kbCount }: { isConn: boolean; kbCount: number }) => {
+  const GW = HALF - 28; const GH = 110;
+  const total = kbCount || 20;
+  const NODES = [
+    { cat: 'Py',   color: CYAN,  rx: 0.5,  ry: 0.12, count: Math.round(total * 0.30) },
+    { cat: 'Sys',  color: GREEN, rx: 0.88, ry: 0.55, count: Math.round(total * 0.25) },
+    { cat: 'Net',  color: AMBER, rx: 0.5,  ry: 0.90, count: Math.round(total * 0.20) },
+    { cat: 'AI',   color: PURP,  rx: 0.12, ry: 0.55, count: Math.round(total * 0.15) },
+    { cat: 'Sec',  color: RED,   rx: 0.25, ry: 0.2,  count: Math.round(total * 0.06) },
+    { cat: 'Data', color: TEAL,  rx: 0.75, ry: 0.2,  count: Math.round(total * 0.04) },
+  ];
+  const pulse = useRef(new Animated.Value(0.4)).current;
+  useEffect(() => {
+    const loop = Animated.loop(Animated.sequence([
+      Animated.timing(pulse, { toValue: 1, duration: 1400, useNativeDriver: true }),
+      Animated.timing(pulse, { toValue: 0.2, duration: 1400, useNativeDriver: true }),
+    ]));
+    loop.start(); return () => loop.stop();
+  }, []);
+  const maxCount = Math.max(...NODES.map(n => n.count), 1);
+  const getStroke = (a: typeof NODES[0], b: typeof NODES[0]) => {
+    const rel = (a.count + b.count) / (2 * maxCount);
+    return Math.max(0.5, rel * 3);
+  };
+
+  return (
+    <View style={[NG.root, { borderColor: CYAN + '25', flex: 1 }]}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 8 }}>
+        <MaterialCommunityIcons name="graph-outline" size={10} color={CYAN} />
+        <Text style={{ fontFamily: MONO, fontSize: 8.5, color: CYAN + '80', fontWeight: '900', letterSpacing: 1.2, flex: 1 }}>KNOWLEDGE MAP</Text>
+        <PulseDot color={isConn ? GREEN : AMBER} size={5} />
+      </View>
+      <View style={{ height: GH }}>
+        <Svg width="100%" height={GH} viewBox={`0 0 ${GW} ${GH}`}>
+          {NODES.map((n, i) => NODES.slice(i + 1).map((m, j) => (
+            <Line key={`l${i}${j}`}
+              x1={n.rx * GW} y1={n.ry * GH} x2={m.rx * GW} y2={m.ry * GH}
+              stroke={isConn ? n.color : DIM}
+              strokeWidth={isConn ? getStroke(n, m) : 0.4}
+              opacity={isConn ? 0.3 : 0.06} />
+          )))}
+          <Circle cx={GW / 2} cy={GH / 2} r="8" fill={isConn ? CYAN + '18' : 'transparent'}
+            stroke={isConn ? CYAN : DIM} strokeWidth="1.5" opacity={0.9} />
+          <Circle cx={GW / 2} cy={GH / 2} r="4" fill={isConn ? CYAN : DIM} opacity={0.9} />
+          {NODES.map((c, i) => (
+            <Circle key={i} cx={c.rx * GW} cy={c.ry * GH} r="7"
+              fill={isConn ? c.color + '1A' : 'transparent'}
+              stroke={isConn ? c.color : DIM} strokeWidth="1.4"
+              opacity={isConn ? 0.85 : 0.12} />
+          ))}
+        </Svg>
+        {NODES.map((c, i) => (
+          <Animated.View key={i} style={{
+            position: 'absolute', left: c.rx * GW - 13, top: c.ry * GH - 13,
+            opacity: isConn ? pulse : 0.18,
+          }}>
+            <View style={{ width: 26, height: 26, borderRadius: 13, borderWidth: 1.5,
+              borderColor: c.color + 'AA', backgroundColor: c.color + '14',
+              alignItems: 'center', justifyContent: 'center' }}>
+              <Text style={{ fontFamily: MONO, fontSize: 7, fontWeight: '900', color: c.color }}>{c.cat}</Text>
+            </View>
+          </Animated.View>
+        ))}
+      </View>
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginTop: 6 }}>
+        {NODES.slice(0, 4).map(n => (
+          <View key={n.cat} style={{ flexDirection: 'row', alignItems: 'center', gap: 3, borderWidth: 1, borderColor: n.color + '28', borderRadius: 5, paddingHorizontal: 5, paddingVertical: 2 }}>
+            <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: n.color }} />
+            <Text style={{ fontFamily: MONO, fontSize: 7, color: n.color, fontWeight: '900' }}>{n.cat}</Text>
+          </View>
+        ))}
+      </View>
+    </View>
+  );
+});
+const NG = StyleSheet.create({
+  root: { backgroundColor: SURF, borderRadius: 12, borderWidth: 1.5, padding: 12 },
+});
+
+// Activity feed (matches ActivityFeed from KB)
+type FeedItem = { icon: string; color: string; title: string; sub: string; time: string };
+const HOME_FEED: FeedItem[] = [
+  { icon: 'link-variant',        color: CYAN,  title: 'Butler server connected', sub: 'LAN · 192.168.x.x', time: '1m' },
+  { icon: 'brain',               color: AMBER, title: 'Knowledge base synced',   sub: 'KB · 20 facts indexed', time: '4m' },
+  { icon: 'code-braces',         color: BLUE,  title: 'Script executed OK',       sub: 'FORGE · system_info.py', time: '12m' },
+  { icon: 'check-circle-outline',color: GREEN, title: 'Ollama model ready',       sub: 'AI · qwen2.5-coder:7b', time: '20m' },
+  { icon: 'shield-check-outline',color: PURP,  title: 'Security audit passed',    sub: 'SEC · AES-256 active', time: '1h' },
+];
+
+const HomeFeed = memo(({ isConn }: { isConn: boolean }) => (
+  <View style={{ backgroundColor: SURF, borderRadius: 14, borderWidth: 1.5, borderColor: DIM + '60', overflow: 'hidden' }}>
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7, padding: 12, paddingBottom: 8, borderBottomWidth: 1, borderBottomColor: DIM + '50' }}>
+      <View style={{ width: 3, height: 13, borderRadius: 1.5, backgroundColor: CYAN }} />
+      <Text style={{ fontFamily: MONO, fontSize: 9, color: CYAN + '90', fontWeight: '900', letterSpacing: 1.5, flex: 1 }}>ACTIVITY FEED</Text>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+        <PulseDot color={isConn ? CYAN : AMBER} size={5} />
+        <Text style={{ fontFamily: MONO, fontSize: 8, color: isConn ? CYAN : AMBER, fontWeight: '900' }}>
+          {isConn ? 'LIVE' : 'STANDBY'}
+        </Text>
+      </View>
+    </View>
+    {HOME_FEED.map((f, i) => (
+      <View key={i} style={{ flexDirection: 'row', alignItems: 'center', gap: 10, padding: 11, borderBottomWidth: i < HOME_FEED.length - 1 ? 1 : 0, borderBottomColor: DIM + '40' }}>
+        <View style={{ width: 28, height: 28, borderRadius: 8, backgroundColor: f.color + '12', borderWidth: 1.5, borderColor: f.color + '30', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          <MaterialCommunityIcons name={f.icon as any} size={13} color={f.color} />
         </View>
         <View style={{ flex: 1 }}>
-          <Text style={{ fontFamily: MONO, fontSize: 13, fontWeight: '900', color: TEXT }}>FILE VAULT</Text>
-          <Text style={{ fontFamily: MONO, fontSize: 9.5, color: MID, marginTop: 2 }}>
-            {isConn ? 'Send files directly to PC Desktop' : 'Pair PC to transfer files instantly'}
-          </Text>
+          <Text style={{ fontFamily: MONO, fontSize: 11.5, color: TEXT, fontWeight: '700' }}>{f.title}</Text>
+          <Text style={{ fontFamily: MONO, fontSize: 9, color: MID, marginTop: 1 }}>{f.sub}</Text>
         </View>
-        <View style={[FT.status, { borderColor: (isConn ? GREEN : AMBER) + '55', backgroundColor: (isConn ? GREEN : AMBER) + '0A' }]}>
+        <Text style={{ fontFamily: MONO, fontSize: 9, color: MID, flexShrink: 0 }}>{f.time}</Text>
+      </View>
+    ))}
+  </View>
+));
+
+// ════════════════════════════════════════════════════════════════
+// METRICS TAB
+// ════════════════════════════════════════════════════════════════
+
+// Live bar chart (matches GrowthChart style)
+const CPUChart = memo(({ isConn, cpu, ram, disk }: { isConn: boolean; cpu: number; ram: number; disk: number }) => {
+  const bars = useMemo(() =>
+    Array.from({ length: 24 }, (_, i) => {
+      const base = 12 + i * 2.5;
+      return { h: base + Math.random() * 28, label: i % 6 === 0 ? `-${24 - i}H` : '' };
+    }), []);
+
+  return (
+    <View style={[MC.root, { borderColor: CYAN + '30' }]}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7, marginBottom: 12 }}>
+        <MaterialCommunityIcons name="chart-bar" size={12} color={CYAN} />
+        <Text style={{ fontFamily: MONO, fontSize: 9.5, color: CYAN + '90', fontWeight: '900', letterSpacing: 1.2, flex: 1 }}>CPU HISTORY · 24H</Text>
+        <Text style={{ fontFamily: MONO, fontSize: 9, color: isConn ? CYAN : MID, fontWeight: '900' }}>
+          {isConn ? `${Math.round(cpu)}%` : '--'}
+        </Text>
+      </View>
+      <View style={{ flexDirection: 'row', alignItems: 'flex-end', height: 70, gap: 2 }}>
+        {bars.map((b, i) => (
+          <View key={i} style={{ flex: 1, alignItems: 'center' }}>
+            <View style={{ flex: 1, width: '100%', justifyContent: 'flex-end' }}>
+              <View style={{ height: `${isConn ? b.h : b.h * 0.15}%`, borderRadius: 2,
+                backgroundColor: i === bars.length - 1 ? CYAN : isConn ? CYAN + '45' : DIM }} />
+            </View>
+          </View>
+        ))}
+      </View>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 4 }}>
+        {['-24H', '-18H', '-12H', '-6H', 'NOW'].map((l, i) => (
+          <Text key={i} style={{ fontFamily: MONO, fontSize: 7.5, color: MID }}>{l}</Text>
+        ))}
+      </View>
+    </View>
+  );
+});
+
+const RAMChart = memo(({ isConn, ram }: { isConn: boolean; ram: number }) => {
+  const sparkBars = useMemo(() => Array.from({ length: 14 }, (_, i) => 20 + i * 4 + Math.random() * 22), []);
+  return (
+    <View style={[MC.root, { borderColor: GREEN + '30' }]}>
+      <View style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: 8 }}>
+        <View style={{ flex: 1 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7, marginBottom: 5 }}>
+            <MaterialCommunityIcons name="memory" size={12} color={GREEN} />
+            <Text style={{ fontFamily: MONO, fontSize: 9.5, color: GREEN + '90', fontWeight: '900', letterSpacing: 1 }}>RAM USAGE</Text>
+          </View>
+          <Text style={{ fontFamily: MONO, fontSize: 38, fontWeight: '900', color: isConn ? GREEN : MID, lineHeight: 42 }}>
+            {isConn ? `${Math.round(ram)}%` : '--'}
+          </Text>
+          <View style={{ flexDirection: 'row', gap: 12, marginTop: 6 }}>
+            {[
+              { l: 'STATUS', v: isConn ? (ram > 85 ? 'HIGH' : 'OK') : '--' },
+              { l: 'TREND',  v: isConn ? '↑ +2%' : '--' },
+              { l: 'PEAK',   v: isConn ? `${Math.round(ram + 8)}%` : '--' },
+            ].map((it, i) => (
+              <View key={i}>
+                <Text style={{ fontFamily: MONO, fontSize: 7.5, color: MID }}>{it.l}</Text>
+                <Text style={{ fontFamily: MONO, fontSize: 12, color: isConn ? TEXT : DIM, fontWeight: '900' }}>{it.v}</Text>
+              </View>
+            ))}
+          </View>
+        </View>
+        <View style={{ borderWidth: 1.5, borderRadius: 10, paddingHorizontal: 9, paddingVertical: 5, borderColor: (isConn ? GREEN : AMBER) + '55', backgroundColor: (isConn ? GREEN : AMBER) + '0C', flexDirection: 'row', alignItems: 'center', gap: 5 }}>
           <PulseDot color={isConn ? GREEN : AMBER} size={5} />
-          <Text style={{ fontFamily: MONO, fontSize: 8.5, color: isConn ? GREEN : AMBER, fontWeight: '900' }}>
-            {isConn ? 'READY' : 'OFFLINE'}
+          <Text style={{ fontFamily: MONO, fontSize: 9, fontWeight: '900', color: isConn ? GREEN : AMBER }}>
+            {isConn ? 'LIVE' : 'STANDBY'}
           </Text>
         </View>
       </View>
-      {isConn && (
-        <View style={{ flexDirection: 'row', gap: 8 }}>
-          <TouchableOpacity onPress={() => { haptics.light(); goToTab('fileshare'); }} activeOpacity={0.82}
-            style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
-              borderWidth: 1.5, borderRadius: 10, paddingVertical: 9,
-              borderColor: PURP + '55', backgroundColor: PURP + '12' }}>
-            <MaterialCommunityIcons name="upload" size={14} color={PURP} />
-            <Text style={{ fontFamily: MONO, fontSize: 11, fontWeight: '900', color: PURP }}>SEND FILE</Text>
-          </TouchableOpacity>
-          <TouchableOpacity onPress={() => { haptics.light(); goToTab('fileshare'); }} activeOpacity={0.82}
-            style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
-              borderWidth: 1.5, borderRadius: 10, paddingVertical: 9,
-              borderColor: CYAN + '55', backgroundColor: CYAN + '12' }}>
-            <MaterialCommunityIcons name="clipboard-arrow-down" size={14} color={CYAN} />
-            <Text style={{ fontFamily: MONO, fontSize: 11, fontWeight: '900', color: CYAN }}>CLIPBOARD</Text>
-          </TouchableOpacity>
-        </View>
-      )}
+      <View style={{ flexDirection: 'row', alignItems: 'flex-end', height: 36, gap: 2 }}>
+        {sparkBars.map((h, i) => (
+          <View key={i} style={{ flex: 1, height: `${isConn ? h : h * 0.12}%`, borderRadius: 2,
+            backgroundColor: i === sparkBars.length - 1 ? GREEN : isConn ? GREEN + '40' : DIM }} />
+        ))}
+      </View>
     </View>
-  </TouchableOpacity>
-));
-const FT = StyleSheet.create({
-  root:   { backgroundColor: SURF, borderRadius: 16, borderWidth: 1.5, padding: 14 },
-  icon:   { width: 48, height: 48, borderRadius: 14, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
-  status: { flexDirection: 'row', alignItems: 'center', gap: 5, borderWidth: 1.5, borderRadius: 8, paddingHorizontal: 8, paddingVertical: 5 },
+  );
 });
 
-// ══════════════════════════════════════════════════════════════════
-// ALERTS & INTEL PANEL
-// ══════════════════════════════════════════════════════════════════
-const AlertsPanel = memo(({ isConn, goToTab }: { isConn: boolean; goToTab: (t: string) => void }) => {
+// Metric row table (matches Query Performance style)
+const MetricsTable = memo(({ isConn, cpu, ram, disk }: {
+  isConn: boolean; cpu: number; ram: number; disk: number;
+}) => (
+  <View style={{ backgroundColor: SURF, borderRadius: 14, borderWidth: 1.5, borderColor: BLUE + '30', padding: 14 }}>
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7, marginBottom: 12 }}>
+      <MaterialCommunityIcons name="chip" size={12} color={BLUE} />
+      <Text style={{ fontFamily: MONO, fontSize: 9.5, color: BLUE + '90', fontWeight: '900', letterSpacing: 1 }}>SYSTEM OVERVIEW</Text>
+    </View>
+    {[
+      { l: 'CPU Load',     v: isConn ? `${Math.round(cpu)}%`  : '--', c: CYAN  },
+      { l: 'RAM Usage',    v: isConn ? `${Math.round(ram)}%`  : '--', c: GREEN },
+      { l: 'Disk Usage',   v: isConn ? `${Math.round(disk)}%` : '--', c: AMBER },
+      { l: 'Connection',   v: isConn ? 'LAN ACTIVE' : 'OFFLINE',      c: isConn ? GREEN : RED   },
+      { l: 'Encryption',   v: 'AES-256-GCM',                          c: PURP  },
+      { l: 'Auth Method',  v: 'HMAC-SHA256',                          c: CYAN  },
+    ].map((r, i) => (
+      <View key={i} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 7, borderBottomWidth: i < 5 ? 1 : 0, borderBottomColor: DIM + '40' }}>
+        <Text style={{ fontFamily: MONO, fontSize: 11, color: MID }}>{r.l}</Text>
+        <Text style={{ fontFamily: MONO, fontSize: 12, fontWeight: '900', color: r.c }}>{r.v}</Text>
+      </View>
+    ))}
+  </View>
+));
+const MC = StyleSheet.create({
+  root: { backgroundColor: SURF, borderRadius: 14, borderWidth: 1.5, padding: 14 },
+});
+
+// ════════════════════════════════════════════════════════════════
+// TELEMETRY TAB
+// ════════════════════════════════════════════════════════════════
+
+// 2×2 large-text status grid (matches CategoryBreakdown style)
+const TelemetryGrid = memo(({ isConn, cpu, ram, disk, kbCount }: {
+  isConn: boolean; cpu: number; ram: number; disk: number; kbCount: number;
+}) => {
+  const cards = [
+    { cat: 'PC',  color: isConn ? GREEN : AMBER, icon: 'desktop-classic',          pct: isConn ? 100 : 0, big: isConn ? 'ONLINE' : 'OFFLINE', desc: isConn ? 'Butler server active' : 'Tap PAIR to connect' },
+    { cat: 'FEED',color: PURP,                   icon: 'pulse',                    pct: isConn ? 85  : 0, big: isConn ? 'ACTIVE' : 'STANDBY', desc: isConn ? 'Data streaming live'  : 'Awaiting connection' },
+    { cat: 'KB',  color: CYAN,                   icon: 'brain',                    pct: isConn ? 92  : 0, big: isConn ? `${kbCount || 0}` : '—', desc: 'FACTS INDEXED' },
+    { cat: 'ENC', color: GREEN,                  icon: 'shield-lock-outline',      pct: 100,              big: 'AES', desc: '256-GCM · ALWAYS ON' },
+  ];
+
+  return (
+    <View>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 10 }}>
+        <View style={{ width: 3, height: 12, borderRadius: 1.5, backgroundColor: PURP }} />
+        <Text style={{ fontFamily: MONO, fontSize: 9, color: PURP + '90', fontWeight: '900', letterSpacing: 1.5 }}>LIVE TELEMETRY</Text>
+      </View>
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+        {cards.map((c, i) => (
+          <View key={i} style={{ width: HALF, backgroundColor: SURF, borderRadius: 12, borderWidth: 1.5, borderTopWidth: 2.5, borderTopColor: c.color, borderColor: c.color + '28', padding: 12 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7, marginBottom: 6 }}>
+              <View style={{ width: 28, height: 28, borderRadius: 7, backgroundColor: c.color + '14', borderWidth: 1, borderColor: c.color + '35', alignItems: 'center', justifyContent: 'center' }}>
+                <MaterialCommunityIcons name={c.icon as any} size={14} color={c.color} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontFamily: MONO, fontSize: 10, fontWeight: '900', color: c.color }}>{c.cat}</Text>
+                <Text style={{ fontFamily: MONO, fontSize: 7.5, color: MID }}>{c.desc}</Text>
+              </View>
+            </View>
+            <Text style={{ fontFamily: MONO, fontSize: 22, fontWeight: '900', color: c.color }} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.5}>{c.big}</Text>
+            <View style={{ height: 3, borderRadius: 1.5, backgroundColor: DIM, marginTop: 8 }}>
+              <View style={{ height: '100%', width: `${c.pct}%` as any, borderRadius: 1.5, backgroundColor: c.color }} />
+            </View>
+          </View>
+        ))}
+      </View>
+    </View>
+  );
+});
+
+// Alerts & Intel (matches KB bridge security style)
+const AlertsIntel = memo(({ isConn, goToTab }: { isConn: boolean; goToTab: (t: string) => void }) => {
   const alerts = isConn
     ? [{ dot: GREEN, text: 'PC paired + active', badge: 'OK',  bc: GREEN },
        { dot: CYAN,  text: 'AES-256 active',      badge: 'SEC', bc: CYAN  }]
@@ -463,25 +567,25 @@ const AlertsPanel = memo(({ isConn, goToTab }: { isConn: boolean; goToTab: (t: s
     { dot: GREEN, text: 'LAN scanner armed', badge: 'NET', bc: GREEN },
     { dot: PURP,  text: 'Encryption active', badge: 'SEC', bc: PURP  },
   ];
+
   return (
-    <View style={AP.root}>
+    <View style={{ backgroundColor: SURF, borderRadius: 14, borderWidth: 1.5, borderColor: DIM + '60', overflow: 'hidden' }}>
       <View style={{ height: 3, flexDirection: 'row' }}>
         <View style={{ flex: 1, backgroundColor: AMBER }} />
         <View style={{ flex: 1, backgroundColor: PURP }} />
       </View>
       <View style={{ flexDirection: 'row' }}>
-        {/* Alerts */}
         <View style={{ flex: 1, padding: 12 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 9 }}>
             <MaterialIcons name="notifications" size={11} color={AMBER} />
             <Text style={{ fontFamily: MONO, fontSize: 9, color: AMBER, fontWeight: '900', letterSpacing: 0.5 }}>ALERTS</Text>
           </View>
           {alerts.map((a, i) => (
-            <View key={i} style={AP.row}>
+            <View key={i} style={{ flexDirection: 'row', alignItems: 'center', gap: 7, paddingVertical: 7, borderBottomWidth: 1, borderBottomColor: DIM + '40' }}>
               <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: a.dot, flexShrink: 0 }} />
-              <Text style={AP.txt} numberOfLines={1}>{a.text}</Text>
-              <View style={[AP.badge, { borderColor: a.bc + '60' }]}>
-                <Text style={[AP.badgeTxt, { color: a.bc }]}>{a.badge}</Text>
+              <Text style={{ fontFamily: MONO, fontSize: 9.5, color: TEXT, flex: 1 }} numberOfLines={1}>{a.text}</Text>
+              <View style={{ borderWidth: 1, borderRadius: 4, paddingHorizontal: 5, paddingVertical: 2, borderColor: a.bc + '60' }}>
+                <Text style={{ fontFamily: MONO, fontSize: 7.5, fontWeight: '900', color: a.bc }}>{a.badge}</Text>
               </View>
             </View>
           ))}
@@ -490,18 +594,17 @@ const AlertsPanel = memo(({ isConn, goToTab }: { isConn: boolean; goToTab: (t: s
           </TouchableOpacity>
         </View>
         <View style={{ width: 1, backgroundColor: DIM }} />
-        {/* Intel */}
         <View style={{ flex: 1, padding: 12 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 9 }}>
             <MaterialCommunityIcons name="clipboard-list" size={11} color={PURP} />
             <Text style={{ fontFamily: MONO, fontSize: 9, color: PURP, fontWeight: '900', letterSpacing: 0.5 }}>INTEL</Text>
           </View>
           {intel.map((it, i) => (
-            <View key={i} style={AP.row}>
+            <View key={i} style={{ flexDirection: 'row', alignItems: 'center', gap: 7, paddingVertical: 7, borderBottomWidth: 1, borderBottomColor: DIM + '40' }}>
               <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: it.dot, flexShrink: 0 }} />
-              <Text style={AP.txt} numberOfLines={1}>{it.text}</Text>
-              <View style={[AP.badge, { borderColor: it.bc + '60', backgroundColor: it.bc + '08' }]}>
-                <Text style={[AP.badgeTxt, { color: it.bc }]}>{it.badge}</Text>
+              <Text style={{ fontFamily: MONO, fontSize: 9.5, color: TEXT, flex: 1 }} numberOfLines={1}>{it.text}</Text>
+              <View style={{ borderWidth: 1, borderRadius: 4, paddingHorizontal: 5, paddingVertical: 2, borderColor: it.bc + '60', backgroundColor: it.bc + '08' }}>
+                <Text style={{ fontFamily: MONO, fontSize: 7.5, fontWeight: '900', color: it.bc }}>{it.badge}</Text>
               </View>
             </View>
           ))}
@@ -513,39 +616,95 @@ const AlertsPanel = memo(({ isConn, goToTab }: { isConn: boolean; goToTab: (t: s
     </View>
   );
 });
-const AP = StyleSheet.create({
-  root:     { backgroundColor: SURF, borderRadius: 14, borderWidth: 1.5, borderColor: DIM + '60', overflow: 'hidden' },
-  row:      { flexDirection: 'row', alignItems: 'center', gap: 7, paddingVertical: 7, borderBottomWidth: 1, borderBottomColor: DIM + '40' },
-  txt:      { fontFamily: MONO, fontSize: 9.5, color: TEXT, flex: 1, lineHeight: 14 },
-  badge:    { borderWidth: 1, borderRadius: 4, paddingHorizontal: 5, paddingVertical: 2, flexShrink: 0 },
-  badgeTxt: { fontFamily: MONO, fontSize: 7.5, fontWeight: '900' },
-});
 
-// ══════════════════════════════════════════════════════════════════
-// SECTION LABEL
-// ══════════════════════════════════════════════════════════════════
-const SectionLabel = memo(({ icon, label, color }: { icon: string; label: string; color: string }) => (
-  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 }}>
-    <View style={{ width: 3, height: 13, borderRadius: 1.5, backgroundColor: color }} />
-    <MaterialCommunityIcons name={icon as any} size={11} color={color} />
-    <Text style={{ fontFamily: MONO, fontSize: 9, fontWeight: '900', color: color + 'CC', letterSpacing: 1.8, flex: 1 }}>
-      {label}
-    </Text>
-    <View style={{ height: 1, width: 18, backgroundColor: color + '20' }} />
+// ════════════════════════════════════════════════════════════════
+// ACTIONS TAB
+// ════════════════════════════════════════════════════════════════
+
+const QUICK_ACTIONS = [
+  { icon: 'qr-code-scanner',      label: 'PAIR PC',    tab: 'connect',   color: TEAL,  desc: 'Connect via QR code' },
+  { icon: 'robot-happy-outline',   label: 'AI CHAT',    tab: 'butler',    color: PURP,  desc: 'Local Ollama assistant' },
+  { icon: 'code-braces-box',       label: 'FORGE',      tab: 'scripts',   color: CYAN,  desc: '250+ automation scripts' },
+  { icon: 'brain',                 label: 'KNOWLEDGE',  tab: 'knowledge', color: AMBER, desc: 'AI neural store' },
+  { icon: 'folder-network',        label: 'FILE VAULT', tab: 'fileshare', color: GREEN, desc: 'PC file transfer' },
+  { icon: 'console-line',          label: 'INTEL LOG',  tab: 'logs',      color: BLUE,  desc: 'System activity feed' },
+  { icon: 'hammer-screwdriver',    label: 'BUILDER',    tab: 'builder',   color: TEAL,  desc: 'Automation flow editor' },
+  { icon: 'palette-swatch-outline',label: 'SKINS',      tab: 'cosmetic',  color: PURP,  desc: 'Visual themes' },
+  { icon: 'tune-variant',          label: 'CONFIG',     tab: 'settings',  color: MID,   desc: 'App preferences' },
+] as const;
+
+const ActionsGrid = memo(({ goToTab }: { goToTab: (t: string) => void }) => (
+  <View>
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 10 }}>
+      <View style={{ width: 3, height: 12, borderRadius: 1.5, backgroundColor: AMBER }} />
+      <Text style={{ fontFamily: MONO, fontSize: 9, color: AMBER + '90', fontWeight: '900', letterSpacing: 1.5 }}>CORE SURFACES</Text>
+    </View>
+    <View style={{ gap: 8 }}>
+      {QUICK_ACTIONS.map((a, i) => (
+        <TouchableOpacity key={i} onPress={() => { haptics.light(); goToTab(a.tab); }} activeOpacity={0.85}
+          style={{ backgroundColor: SURF, borderRadius: 12, borderWidth: 1.5, borderColor: a.color + '30', padding: 12, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+          <View style={{ width: 40, height: 40, borderRadius: 11, backgroundColor: a.color + '14', borderWidth: 1.5, borderColor: a.color + '30', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <MaterialCommunityIcons name={a.icon as any} size={18} color={a.color} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontFamily: MONO, fontSize: 12, fontWeight: '900', color: TEXT }}>{a.label}</Text>
+            <Text style={{ fontFamily: MONO, fontSize: 9, color: MID, marginTop: 2 }}>{a.desc}</Text>
+          </View>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, borderWidth: 1.5, borderRadius: 8, paddingHorizontal: 8, paddingVertical: 5,
+            borderColor: a.color + '40', backgroundColor: a.color + '08' }}>
+            <Text style={{ fontFamily: MONO, fontSize: 8, fontWeight: '900', color: a.color }}>OPEN</Text>
+          </View>
+        </TouchableOpacity>
+      ))}
+    </View>
+    {/* Security strip */}
+    <View style={{ backgroundColor: SURF, borderRadius: 12, borderWidth: 1.5, borderColor: GREEN + '25', padding: 12, gap: 8, marginTop: 8 }}>
+      <Text style={{ fontFamily: MONO, fontSize: 9, color: GREEN + '80', fontWeight: '900', letterSpacing: 1.2 }}>SECURITY STATUS</Text>
+      {[
+        { l: 'Encryption',  v: 'AES-256-GCM', c: GREEN },
+        { l: 'Auth',        v: 'HMAC-SHA256', c: CYAN  },
+        { l: 'Transport',   v: 'LAN ONLY',    c: AMBER },
+        { l: 'Cloud relay', v: 'DISABLED',    c: GREEN },
+        { l: 'Telemetry',   v: 'ZERO',        c: PURP  },
+      ].map((it, i) => (
+        <View key={i} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+          <Text style={{ fontFamily: MONO, fontSize: 11, color: MID }}>{it.l}</Text>
+          <Text style={{ fontFamily: MONO, fontSize: 11, fontWeight: '900', color: it.c }}>{it.v}</Text>
+        </View>
+      ))}
+    </View>
   </View>
 ));
 
-// ══════════════════════════════════════════════════════════════════
+// ════════════════════════════════════════════════════════════════
+// STATUS BAR (matches KB footer)
+// ════════════════════════════════════════════════════════════════
+const HomeStatusBar = memo(({ isConn, insetBottom }: { isConn: boolean; insetBottom: number }) => (
+  <View style={[SB.root, { paddingBottom: Math.max(insetBottom + 4, 10) }]}>
+    <PulseDot color={isConn ? GREEN : AMBER} size={5} />
+    <Text style={{ fontFamily: MONO, fontSize: 9, color: isConn ? GREEN : AMBER, fontWeight: '900' }}>
+      {isConn ? 'BUTLER ACTIVE · ZERO CLOUD' : 'OFFLINE · PAIR PC TO ENABLE'}
+    </Text>
+    <View style={{ flex: 1 }} />
+    <Text style={{ fontFamily: MONO, fontSize: 9, color: MID }}>v7.3 · LAN ONLY</Text>
+  </View>
+));
+const SB = StyleSheet.create({
+  root: { backgroundColor: SURF, borderTopWidth: 1, borderTopColor: DIM + '50', paddingTop: 8, paddingHorizontal: 14, flexDirection: 'row', alignItems: 'center', gap: 8 },
+});
+
+// ════════════════════════════════════════════════════════════════
 // MAIN SCREEN
-// ══════════════════════════════════════════════════════════════════
+// ════════════════════════════════════════════════════════════════
 function HomeInner() {
-  const insets    = useSafeAreaInsets();
-  const [isConn,  setIsConn]  = useState(false);
-  const [cpu,     setCpu]     = useState(0);
-  const [ram,     setRam]     = useState(0);
-  const [disk,    setDisk]    = useState(0);
-  const [kbCount, setKbCount] = useState(0);
-  const [refresh, setRefresh] = useState(false);
+  const insets  = useSafeAreaInsets();
+  const [tab, setTab]       = useState('overview');
+  const [isConn, setIsConn] = useState(false);
+  const [cpu,    setCpu]    = useState(0);
+  const [ram,    setRam]    = useState(0);
+  const [disk,   setDisk]   = useState(0);
+  const [kbCount,setKbCount]= useState(0);
+  const [refresh, setRefresh]= useState(false);
 
   const loadData = useCallback(async () => {
     try {
@@ -562,9 +721,9 @@ function HomeInner() {
           const res = await fetch(`http://${ip}:${prt}/api/metrics`, { headers: hd, signal: ctrl.signal });
           if (res.ok) {
             const d = await res.json();
-            setCpu(d.cpu_percent ?? d.cpu?.percent ?? 0);
-            setRam(d.ram_percent ?? d.memory?.percent ?? 0);
-            setDisk(d.disk_percent ?? d.disk?.percent ?? 0);
+            setCpu(d.cpu_percent  ?? d.cpu?.percent    ?? 0);
+            setRam(d.ram_percent  ?? d.memory?.percent ?? 0);
+            setDisk(d.disk_percent ?? d.disk?.percent  ?? 0);
           }
         } catch {}
       }
@@ -581,9 +740,9 @@ function HomeInner() {
     return () => clearInterval(t);
   }, [loadData]));
 
-  const goToTab = useCallback((tab: string) => {
+  const goToTab = useCallback((t: string) => {
     haptics.light();
-    try { (global as any).__butlerSwitchTab?.(tab); } catch {}
+    try { (global as any).__butlerSwitchTab?.(t); } catch {}
   }, []);
 
   const onRefresh = useCallback(async () => {
@@ -591,60 +750,85 @@ function HomeInner() {
     await loadData(); haptics.success(); setRefresh(false);
   }, [loadData]);
 
+  const refreshControl = (
+    <RefreshControl refreshing={refresh} onRefresh={onRefresh}
+      tintColor={CYAN} colors={[CYAN, GREEN]} progressBackgroundColor={SURF} />
+  );
+
   return (
     <View style={{ flex: 1, backgroundColor: BG }}>
-      <HomeHeader safeTop={insets.top} isConn={isConn} onPair={() => goToTab('connect')} />
-      <ScrollView
-        style={{ flex: 1 }}
-        contentContainerStyle={{ padding: 14, gap: 12, paddingBottom: insets.bottom + 110 }}
-        showsVerticalScrollIndicator={false}
-        removeClippedSubviews={Platform.OS === 'android'}
-        refreshControl={
-          <RefreshControl refreshing={refresh} onRefresh={onRefresh}
-            tintColor={CYAN} colors={[CYAN, GREEN]} progressBackgroundColor={SURF} />
-        }
-      >
-        {/* Quick nav row */}
-        <QuickActions goToTab={goToTab} />
+      <HomeHeader
+        safeTop={insets.top} isConn={isConn}
+        tab={tab} onTabChange={setTab}
+        onPair={() => goToTab('connect')}
+      />
 
-        {/* 2×2 Telemetry Grid */}
-        <View>
-          <SectionLabel icon="satellite-variant" label="SYSTEM TELEMETRY" color={CYAN} />
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
-            <PCCard isConn={isConn} cpu={cpu} ram={ram} onPair={() => goToTab('connect')} />
-            <LiveFeedCard isConn={isConn} />
-            <CrawlerCard isConn={isConn} kbCount={kbCount} />
-            <KBCard isConn={isConn} kbCount={kbCount} />
-          </View>
-        </View>
-
-        {/* System Metrics */}
-        <MetricsStrip isConn={isConn} cpu={cpu} ram={ram} disk={disk} />
-
-        {/* Download Server CTA */}
-        <DownloadCTA goToTab={goToTab} />
-
-        {/* File Transfer Quick Zone */}
-        <FileTransferQuick isConn={isConn} goToTab={goToTab} />
-
-        {/* Alerts & Intel */}
-        <View>
-          <SectionLabel icon="alert-circle-outline" label="ALERTS & INTEL" color={AMBER} />
-          <AlertsPanel isConn={isConn} goToTab={goToTab} />
-        </View>
-
-        {/* Security footer badges */}
-        <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 8, paddingTop: 4 }}>
-          {['AES-256', 'LAN ONLY', 'ZERO CLOUD', 'HMAC-SHA256'].map((b, i) => (
-            <View key={i} style={{ borderWidth: 1, borderRadius: 6, paddingHorizontal: 7, paddingVertical: 3,
-              borderColor: [CYAN, GREEN, AMBER, PURP][i] + '28', backgroundColor: [CYAN, GREEN, AMBER, PURP][i] + '05' }}>
-              <Text style={{ fontFamily: MONO, fontSize: 7, color: [CYAN, GREEN, AMBER, PURP][i] + '65', fontWeight: '900' }}>
-                {b}
-              </Text>
+      {/* ── OVERVIEW ── */}
+      {tab === 'overview' && (
+        <ScrollView showsVerticalScrollIndicator={false} refreshControl={refreshControl}
+          contentContainerStyle={{ padding: 14, gap: 12, paddingBottom: insets.bottom + 100 }}>
+          <PCStatusEngine isConn={isConn} onPair={() => goToTab('connect')} />
+          <HomeStatsGrid isConn={isConn} cpu={cpu} ram={ram} disk={disk} kbCount={kbCount} />
+          <DownloadCTA />
+          <View style={{ flexDirection: 'row', gap: 10 }}>
+            <HomeNeuralGraph isConn={isConn} kbCount={kbCount} />
+            <View style={{ width: HALF, gap: 8 }}>
+              {[
+                { l: 'STATUS',  v: isConn ? 'LIVE'    : 'OFFLINE',      c: isConn ? GREEN : AMBER },
+                { l: 'ENCRYPT', v: 'AES-256',                            c: PURP  },
+                { l: 'KB FACTS',v: isConn ? String(kbCount || 0) : '--', c: AMBER },
+                { l: 'LAN',     v: isConn ? 'PAIRED'  : '--',            c: CYAN  },
+              ].map((m, i) => (
+                <View key={i} style={{ backgroundColor: SURF, borderRadius: 10, borderWidth: 1.5, borderLeftWidth: 3, borderLeftColor: m.c, borderColor: m.c + '25', padding: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <Text style={{ fontFamily: MONO, fontSize: 8, color: MID, fontWeight: '900' }}>{m.l}</Text>
+                  <Text style={{ fontFamily: MONO, fontSize: 13, fontWeight: '900', color: m.c }}>{m.v}</Text>
+                </View>
+              ))}
             </View>
-          ))}
-        </View>
-      </ScrollView>
+          </View>
+          <HomeFeed isConn={isConn} />
+        </ScrollView>
+      )}
+
+      {/* ── METRICS ── */}
+      {tab === 'metrics' && (
+        <ScrollView showsVerticalScrollIndicator={false} refreshControl={refreshControl}
+          contentContainerStyle={{ padding: 14, gap: 12, paddingBottom: insets.bottom + 100 }}>
+          <CPUChart isConn={isConn} cpu={cpu} ram={ram} disk={disk} />
+          <RAMChart isConn={isConn} ram={ram} />
+          <MetricsTable isConn={isConn} cpu={cpu} ram={ram} disk={disk} />
+        </ScrollView>
+      )}
+
+      {/* ── TELEMETRY ── */}
+      {tab === 'telemetry' && (
+        <ScrollView showsVerticalScrollIndicator={false} refreshControl={refreshControl}
+          contentContainerStyle={{ padding: 14, gap: 12, paddingBottom: insets.bottom + 100 }}>
+          <TelemetryGrid isConn={isConn} cpu={cpu} ram={ram} disk={disk} kbCount={kbCount} />
+          <AlertsIntel isConn={isConn} goToTab={goToTab} />
+          {/* Security badge row */}
+          <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 8, paddingTop: 4 }}>
+            {['AES-256', 'LAN ONLY', 'ZERO CLOUD', 'HMAC-SHA256'].map((b, i) => (
+              <View key={i} style={{ borderWidth: 1, borderRadius: 6, paddingHorizontal: 7, paddingVertical: 3,
+                borderColor: [CYAN, GREEN, AMBER, PURP][i] + '28', backgroundColor: [CYAN, GREEN, AMBER, PURP][i] + '05' }}>
+                <Text style={{ fontFamily: MONO, fontSize: 7, color: [CYAN, GREEN, AMBER, PURP][i] + '65', fontWeight: '900' }}>
+                  {b}
+                </Text>
+              </View>
+            ))}
+          </View>
+        </ScrollView>
+      )}
+
+      {/* ── ACTIONS ── */}
+      {tab === 'actions' && (
+        <ScrollView showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ padding: 14, gap: 12, paddingBottom: insets.bottom + 100 }}>
+          <ActionsGrid goToTab={goToTab} />
+        </ScrollView>
+      )}
+
+      <HomeStatusBar isConn={isConn} insetBottom={insets.bottom} />
     </View>
   );
 }
