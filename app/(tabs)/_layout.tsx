@@ -66,6 +66,7 @@ export function notifyOnboardingReset(): void {
 type IconFn = (color: string, size: number) => React.ReactNode;
 
 const ICON_MAP: Record<string, IconFn> = {
+  home:           (c, s) => <MaterialCommunityIcons name="view-dashboard" size={s} color={c} />,
   nexushome:      (c, s) => <MaterialIcons name="home" size={s} color={c} />,
   scripts:        (c, s) => <MaterialIcons name="code" size={s} color={c} />,
   butler:         (c, s) => <MaterialCommunityIcons name="robot" size={s} color={c} />,
@@ -76,11 +77,12 @@ const ICON_MAP: Record<string, IconFn> = {
   connect:        (c, s) => <MaterialCommunityIcons name="server-network" size={s} color={c} />,
   settings:       (c, s) => <MaterialIcons name="tune" size={s} color={c} />,
   cosmetic:       (c, s) => <MaterialCommunityIcons name="palette-swatch" size={s} color={c} />,
-  downloads:       (c, s) => <MaterialCommunityIcons name="download-circle" size={s} color={c} />,
+
 };
 
 const TAB_LABELS: Record<string, string> = {
-  nexushome:      'CORE',
+  home:           'HOME',
+  nexushome:      'NEXUS',
   scripts:        'FORGE',
   butler:         'BUTLR',
   knowledge:      'KB',
@@ -89,7 +91,6 @@ const TAB_LABELS: Record<string, string> = {
   fileshare:      'VAULT',
   settings:       'CFG',
   cosmetic:       'SKINS',
-  downloads:       'GET',
 
   connect:        'PAIR',
 };
@@ -179,7 +180,7 @@ export default function TabsLayout() {
   const prevIsDoneRef = useRef<boolean | null>(null);
   useEffect(() => {
     if (isDone === true && prevIsDoneRef.current === false) {
-      try { router.replace('/(tabs)/butler' as any); } catch {}
+      try { router.replace('/(tabs)/home' as any); } catch {}
     }
     prevIsDoneRef.current = isDone;
   }, [isDone]);
@@ -257,8 +258,7 @@ export default function TabsLayout() {
   }
 
   // ── ROUTE PHASE: new vs returning user ─────────────────────────
-  const initialRoute = isDone ? 'nexushome' : 'onboarding';
-  // nexushome is the landing page for returning users
+  const initialRoute = isDone ? 'home' : 'onboarding';
 
   return (
     // ⚠️  <Tabs> MUST be the direct root. No wrappers. See contract (C) above.
@@ -273,8 +273,9 @@ export default function TabsLayout() {
       {/* ── Tutorial: hidden from tab bar, always navigable ── */}
       <Tabs.Screen name="onboarding" options={{ href: null }} />
 
-      {/* ── nexushome is the default home screen ── */}
-      <Tabs.Screen name="nexushome" options={{ title: 'NEXUS' }} />
+      {/* ── MAIN VISIBLE TABS — home is FIRST ── */}
+      <Tabs.Screen name="home"      options={{ title: TAB_LABELS.home,      tabBarLabel: TAB_LABELS.home      }} />
+      <Tabs.Screen name="nexushome" options={{ title: TAB_LABELS.nexushome, tabBarLabel: TAB_LABELS.nexushome }} />
       <Tabs.Screen name="scripts"   options={{ title: TAB_LABELS.scripts,   tabBarLabel: TAB_LABELS.scripts   }} />
       <Tabs.Screen name="butler"    options={{ title: TAB_LABELS.butler,     tabBarLabel: TAB_LABELS.butler    }} />
       <Tabs.Screen name="knowledge" options={{ title: TAB_LABELS.knowledge,  tabBarLabel: TAB_LABELS.knowledge }} />
@@ -285,9 +286,6 @@ export default function TabsLayout() {
       {/* ── SKINS tab before Settings so Settings is the rightmost/last tab ── */}
       <Tabs.Screen name="cosmetic"  options={{ title: 'SKINS',               tabBarLabel: 'SKINS'              }} />
       <Tabs.Screen name="settings"  options={{ title: TAB_LABELS.settings,   tabBarLabel: TAB_LABELS.settings  }} />
-
-      {/* ── DOWNLOAD CENTER — visible tab ── */}
-      <Tabs.Screen name="downloads" options={{ title: TAB_LABELS.downloads, tabBarLabel: TAB_LABELS.downloads }} />
 
       {/* ── PAIR PC — visible tab ── */}
       <Tabs.Screen name="connect"  options={{ title: TAB_LABELS.connect,  tabBarLabel: TAB_LABELS.connect  }} />
