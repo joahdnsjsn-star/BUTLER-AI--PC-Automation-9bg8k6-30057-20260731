@@ -138,7 +138,7 @@ export function NexusButlerHeaderCard({ isConnected, goToTab }: {
           }]}>
           <View style={s.avatarInner}>
             <ExpoImage
-              source={(() => { try { return require('@/assets/images/nexus-robot-v2.png'); } catch { try { return require('@/assets/images/mascot_shield.png'); } catch { return null; } } })()}
+              source={require('@/assets/images/nexus-robot-v2.png')}
               style={{ width: 68, height: 58, borderRadius: 10 }}
               contentFit="cover"
             />
