@@ -145,6 +145,26 @@ const TC = StyleSheet.create({
   sub:   { fontFamily:MONO, fontSize:8.5, color:MID, lineHeight:12 },
 });
 
+// Quick nav tile component — hooks must be at component level, NOT inside map()
+type NavItem = { icon: string; label: string; tab: string; color: string };
+const NavTile = memo(({ item, goToTab }: { item: NavItem; goToTab: (t:string)=>void }) => {
+  const scaleA = useRef(new Animated.Value(1)).current;
+  const SW_NAV = Math.max(320, Dimensions.get('window').width);
+  const PAD_NAV = 12;
+  return (
+    <Pressable
+      onPress={() => goToTab(item.tab)}
+      onPressIn={() => Animated.spring(scaleA, { toValue:0.88, tension:400, friction:12, useNativeDriver:true }).start()}
+      onPressOut={() => Animated.spring(scaleA, { toValue:1, tension:280, friction:10, useNativeDriver:true }).start()}
+      style={{ width:(SW_NAV-PAD_NAV*2-7*4)/5, alignItems:'center' }}>
+      <Animated.View style={[NK.cell, { borderColor:item.color+'35', borderTopColor:item.color, backgroundColor:item.color+'09', transform:[{scale:scaleA}] }]}>
+        <MaterialCommunityIcons name={item.icon as any} size={20} color={item.color} />
+        <Text style={[NK.label, { color:item.color+'BB' }]}>{item.label}</Text>
+      </Animated.View>
+    </Pressable>
+  );
+});
+
 // Quick nav tiles
 const NAV_ITEMS = [
   { icon:'robot-happy-outline', label:'AI',      tab:'butler',    color:PURP  },
@@ -291,21 +311,9 @@ function NexusHomeInner() {
             <View style={{ flex:1, height:1, backgroundColor: CYAN+'20' }} />
           </View>
           <View style={{ flexDirection:'row', flexWrap:'wrap', gap:7 }}>
-            {NAV_ITEMS.map((n,i) => {
-              const scaleA = useRef(new Animated.Value(1)).current;
-              return (
-                <Pressable key={n.tab}
-                  onPress={() => goToTab(n.tab)}
-                  onPressIn={() => Animated.spring(scaleA,{toValue:0.88,tension:400,friction:12,useNativeDriver:true}).start()}
-                  onPressOut={() => Animated.spring(scaleA,{toValue:1,tension:280,friction:10,useNativeDriver:true}).start()}
-                  style={{ width:(SW-PAD*2-7*4)/5, alignItems:'center' }}>
-                  <Animated.View style={[NK.cell, { borderColor:n.color+'35', borderTopColor:n.color, backgroundColor:n.color+'09', transform:[{scale:scaleA}] }]}>
-                    <MaterialCommunityIcons name={n.icon as any} size={20} color={n.color} />
-                    <Text style={[NK.label, { color:n.color+'BB' }]}>{n.label}</Text>
-                  </Animated.View>
-                </Pressable>
-              );
-            })}
+            {NAV_ITEMS.map(n => (
+              <NavTile key={n.tab} item={n} goToTab={goToTab} />
+            ))}
           </View>
         </View>
 
