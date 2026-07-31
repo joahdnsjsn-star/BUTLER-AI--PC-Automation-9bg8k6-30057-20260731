@@ -7,7 +7,7 @@ try { require('./tools/postinstall.js'); } catch (e) {}
 const config = getDefaultConfig(__dirname);
 
 // Bump cache to force full rebuild.
-config.cacheVersion = 'butler-ai-v5.2.6-fix-template-regex';
+config.cacheVersion = 'butler-ai-v5.2.9-flow-perf-stub';
 
 // ── COPYRIGHT NOTICE SERIALIZER ───────────────────────────────────────
 // Prepends a copyright banner to the COMPILED bundle. This banner
@@ -173,6 +173,8 @@ const errorManagerBlockPattern  = /.*expo-modules-core[^/]*.*[/\\]sweet[/\\]setU
 const requireNativeWebPattern   = /.*expo-modules-core[^/\\]*.*[/\\]src[/\\]requireNativeModule\.web\.ts$/;
 // Block ALL .flow files — they contain Flow type syntax Hermes cannot parse
 const flowFilePattern           = /.*\.flow$/
+// Block react-native private webapis that contain Flow-typed JS files
+const rnPrivateWebapisPattern   = /.*react-native.*[/\\]src[/\\]private[/\\]webapis[/\\].*\.js$/;
 
 const newPatterns = [
   expoModulesFxPattern,
@@ -182,6 +184,7 @@ const newPatterns = [
   errorManagerBlockPattern,
   requireNativeWebPattern,
   flowFilePattern,
+  rnPrivateWebapisPattern,
 ];
 config.resolver.blockList = existingBlockList
   ? Array.isArray(existingBlockList)
@@ -236,6 +239,19 @@ config.resolver.resolveRequest = (context, moduleName, platform) => {
         moduleName.endsWith('.flow') ||
         moduleName.endsWith('.js.flow') ||
         moduleName === './index.js.flow'
+      )
+    ) {
+      return { filePath: EMPTY_STUB, type: 'sourceFile' };
+    }
+
+    // ── react-native private webapis (Flow-typed .js files) ──────────────────
+    // Files under react-native/src/private/webapis/ use Flow type syntax
+    // inside .js files which Hermes parser cannot handle. Stub them out.
+    if (
+      typeof moduleName === 'string' && (
+        moduleName.includes('private/webapis') ||
+        moduleName.includes('private\\webapis') ||
+        (moduleName.includes('react-native') && moduleName.includes('webapis'))
       )
     ) {
       return { filePath: EMPTY_STUB, type: 'sourceFile' };

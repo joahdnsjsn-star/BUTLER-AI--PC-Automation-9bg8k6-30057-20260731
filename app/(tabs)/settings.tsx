@@ -387,7 +387,7 @@ function hlSrc(src){
   return r;
 }
 function escH(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
-function escRe(s){return s.replace(/[.*+?^${}()|[\\]\\\\]/g,'\\\\$&');}
+function escRe(s){return s.replace(/[.*+?^\${}()|[\\]\\\\]/g,'\\\\$&');}
 function openEdit(){
   if(!current){alert('Select a file first');return;}
   document.getElementById('edit-panel').classList.add('open');
