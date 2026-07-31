@@ -274,21 +274,22 @@ export default function TabsLayout() {
       <Tabs.Screen name="onboarding" options={{ href: null }} />
 
       {/* ── MAIN VISIBLE TABS — home is FIRST ── */}
+      {/* ── MAIN TABS — home first, settings LAST ── */}
       <Tabs.Screen name="home"      options={{ title: TAB_LABELS.home,      tabBarLabel: TAB_LABELS.home      }} />
-      <Tabs.Screen name="nexushome" options={{ title: TAB_LABELS.nexushome, tabBarLabel: TAB_LABELS.nexushome }} />
+      <Tabs.Screen name="butler"    options={{ title: TAB_LABELS.butler,    tabBarLabel: TAB_LABELS.butler    }} />
       <Tabs.Screen name="scripts"   options={{ title: TAB_LABELS.scripts,   tabBarLabel: TAB_LABELS.scripts   }} />
-      <Tabs.Screen name="butler"    options={{ title: TAB_LABELS.butler,     tabBarLabel: TAB_LABELS.butler    }} />
-      <Tabs.Screen name="knowledge" options={{ title: TAB_LABELS.knowledge,  tabBarLabel: TAB_LABELS.knowledge }} />
-      <Tabs.Screen name="logs"      options={{ title: TAB_LABELS.logs,       tabBarLabel: TAB_LABELS.logs      }} />
-      <Tabs.Screen name="builder"   options={{ title: TAB_LABELS.builder,    tabBarLabel: TAB_LABELS.builder   }} />
-      <Tabs.Screen name="fileshare" options={{ title: TAB_LABELS.fileshare,  tabBarLabel: TAB_LABELS.fileshare }} />
+      <Tabs.Screen name="knowledge" options={{ title: TAB_LABELS.knowledge, tabBarLabel: TAB_LABELS.knowledge }} />
+      <Tabs.Screen name="logs"      options={{ title: TAB_LABELS.logs,      tabBarLabel: TAB_LABELS.logs      }} />
+      <Tabs.Screen name="fileshare" options={{ title: TAB_LABELS.fileshare, tabBarLabel: TAB_LABELS.fileshare }} />
+      <Tabs.Screen name="builder"   options={{ title: TAB_LABELS.builder,   tabBarLabel: TAB_LABELS.builder   }} />
+      <Tabs.Screen name="connect"   options={{ title: TAB_LABELS.connect,   tabBarLabel: TAB_LABELS.connect   }} />
+      <Tabs.Screen name="cosmetic"  options={{ title: 'SKINS',              tabBarLabel: 'SKINS'              }} />
 
-      {/* ── SKINS tab before Settings so Settings is the rightmost/last tab ── */}
-      <Tabs.Screen name="cosmetic"  options={{ title: 'SKINS',               tabBarLabel: 'SKINS'              }} />
-      <Tabs.Screen name="settings"  options={{ title: TAB_LABELS.settings,   tabBarLabel: TAB_LABELS.settings  }} />
+      {/* ── NEXUS hidden — not shown in tab bar ── */}
+      <Tabs.Screen name="nexushome" options={{ href: null }} />
 
-      {/* ── PAIR PC — visible tab ── */}
-      <Tabs.Screen name="connect"  options={{ title: TAB_LABELS.connect,  tabBarLabel: TAB_LABELS.connect  }} />
+      {/* ── SETTINGS — always LAST ── */}
+      <Tabs.Screen name="settings"  options={{ title: TAB_LABELS.settings,  tabBarLabel: TAB_LABELS.settings  }} />
 
       {/* ── HIDDEN UTILITY TABS ── */}
       <Tabs.Screen name="index" options={{ href: null }} />
