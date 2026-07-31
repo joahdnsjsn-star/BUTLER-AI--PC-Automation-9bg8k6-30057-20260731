@@ -1,0 +1,50 @@
+BUTLER AI SOURCE-AVAILABLE LICENSE v1.0
+Copyright (c) 2025-2026 Shawn Papanek. All rights reserved.
+
+GRANT OF RIGHTS
+
+Subject to the terms and conditions of this Licence, Shawn Papanek
+("Licensor") grants you a limited, non-exclusive, non-transferable,
+non-sublicensable right to:
+
+  (a) Read and audit this source code for security and privacy verification;
+  (b) Run the server component on your own personal hardware;
+  (c) Modify the server component for personal use on your own machine.
+
+RESTRICTIONS
+
+You may NOT, without prior written permission from the Licensor:
+
+  (a) Distribute, sublicense, or publish this source code or any derivative;
+  (b) Use this code (in whole or in part) to build or assist a competing
+      product or service, including any product that provides phone-to-PC
+      automation, local AI control, or LAN-based PC scripting;
+  (c) Host any part of this software as a service for third parties;
+  (d) Train, fine-tune, distil, or derive any machine-learning model,
+      dataset, or AI system from this source code, documentation, or
+      any other part of this repository;
+  (e) Remove or alter any trademark, copyright, or proprietary notice.
+
+TRADEMARKS
+
+This Licence grants no right to use any trademark of Shawn Papanek,
+including but not limited to BUTLER AI™, BOTER™, COMMANDCUBE™, NEXUS™,
+XUSLINK™, SCRIPTSHIELD™, FITCORE™, DARKBOOT™, BUTLER MIND™, VAULTPROOF™,
+and PULSECODE™. See NOTICE for the full trademark list.
+
+NO WARRANTY
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+OR IMPLIED. IN NO EVENT SHALL THE LICENSOR BE LIABLE FOR ANY CLAIM,
+DAMAGES OR OTHER LIABILITY ARISING FROM THE USE OF THE SOFTWARE.
+
+GOVERNING LAW
+
+This Licence is governed by the laws of the United States. Any action
+arising out of or in connection with this Licence shall be brought in
+the federal or state courts located in the United States.
+
+---
+Butler AI v9.0.0 · Build NX-9.0.0-20260724-PROD
+Package: com.butlerai.pc.automation
+Contact: shawnpapanek@butlerai.app

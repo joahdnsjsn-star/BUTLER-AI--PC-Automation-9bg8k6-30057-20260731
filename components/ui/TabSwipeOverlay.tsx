@@ -1,33 +1,37 @@
 /**
- * TabSwipeOverlay — invisible gesture layer for left/right tab swipes
- * Sits behind all content (zIndex 0) and responds to horizontal pan gestures.
- * Navigates to leftRoute (swipe right) or rightRoute (swipe left).
+ * TabSwipeOverlay — Transparent PanResponder layer for horizontal tab-swipe navigation.
+ * Place as the FIRST child inside any tab page's root View.
+ * - Swipe LEFT  → leftRoute  (previous tab)
+ * - Swipe RIGHT → rightRoute (next tab)
+ * Uses box-none so all children still receive touches normally.
  */
-
 import React, { useRef } from 'react';
-import { View, PanResponder, StyleSheet } from 'react-native';
+import { PanResponder, View, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
+import { haptics } from '@/services/haptics';
 
-interface Props {
-  leftRoute?: string;
-  rightRoute?: string;
-  /** Minimum horizontal swipe distance to trigger (default 60px) */
-  threshold?: number;
+interface TabSwipeOverlayProps {
+  /** Route to navigate when swiping left (swipe right → go left in tab order) */
+  leftRoute: string | null;
+  /** Route to navigate when swiping right (swipe left → go right in tab order) */
+  rightRoute: string | null;
 }
 
-export function TabSwipeOverlay({ leftRoute, rightRoute, threshold = 60 }: Props) {
-  const startX = useRef(0);
-
-  const panResponder = useRef(
+export function TabSwipeOverlay({ leftRoute, rightRoute }: TabSwipeOverlayProps) {
+  const pan = useRef(
     PanResponder.create({
-      onMoveShouldSetPanResponder: (_, gs) =>
-        Math.abs(gs.dx) > 12 && Math.abs(gs.dx) > Math.abs(gs.dy) * 1.5,
-      onPanResponderGrant: (_, gs) => { startX.current = gs.x0; },
-      onPanResponderRelease: (_, gs) => {
-        if (gs.dx < -threshold && rightRoute) {
-          try { router.push(rightRoute as any); } catch {}
-        } else if (gs.dx > threshold && leftRoute) {
-          try { router.push(leftRoute as any); } catch {}
+      // Only intercept clearly horizontal gestures
+      onMoveShouldSetPanResponder: (_, g) =>
+        Math.abs(g.dx) > 50 && Math.abs(g.dy) < 40 && Math.abs(g.dx) > Math.abs(g.dy) * 2.5,
+      onPanResponderRelease: (_, g) => {
+        if (g.dx > 80 && leftRoute) {
+          // Swipe right → go to previous (left) tab
+          haptics.light();
+          try { router.navigate(leftRoute as any); } catch {}
+        } else if (g.dx < -80 && rightRoute) {
+          // Swipe left → go to next (right) tab
+          haptics.light();
+          try { router.navigate(rightRoute as any); } catch {}
         }
       },
     })
@@ -35,9 +39,9 @@ export function TabSwipeOverlay({ leftRoute, rightRoute, threshold = 60 }: Props
 
   return (
     <View
-      style={StyleSheet.absoluteFill}
+      {...pan.panHandlers}
+      style={StyleSheet.absoluteFillObject}
       pointerEvents="box-none"
-      {...panResponder.panHandlers}
     />
   );
 }
