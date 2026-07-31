@@ -1,0 +1,65 @@
+{
+  "expo": {
+    "name": "Butler AI: PC Automation",
+    "slug": "butler-ai-pc-automation",
+    "scheme": "butlerai",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#080B11"
+    },
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.butlerai.pc.automation",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Used to scan the QR code your PC server displays so this app can pair with it.",
+        "NSLocalNetworkUsageDescription": "Butler AI connects to your own PC server over your local Wi-Fi network to send commands and receive results.",
+        "NSBonjourServices": ["_butler._tcp"]
+      }
+    },
+    "android": {
+      "package": "com.butlerai.pc.automation",
+      "versionCode": 1,
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/icon.png",
+        "backgroundColor": "#080B11"
+      },
+      "permissions": [
+        "CAMERA",
+        "INTERNET",
+        "ACCESS_NETWORK_STATE",
+        "ACCESS_WIFI_STATE"
+      ]
+    },
+    "web": {
+      "bundler": "metro",
+      "favicon": "./assets/icon.png"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Used to scan the QR code your PC server displays so this app can pair with it."
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#3C83F6"
+        }
+      ]
+    ],
+    "extra": {
+      "router": {}
+    }
+  }
+}

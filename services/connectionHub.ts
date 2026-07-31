@@ -34,6 +34,7 @@
  *   const text = await connectionHub.clipboardPull();
  */
 
+import { logger } from '@/utils/logger';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { serverConnection } from './serverConnection';
 import { autoConnectEngine, EngineEvent, EngineStatus } from './autoConnectEngine';
@@ -134,7 +135,7 @@ class ConnectionHub {
         // Probe capabilities in the background — non-blocking
         this._probeCapabilities().catch(() => {});
       }
-    } catch {}
+    } catch (e) { logger.warn('[connectionHub] error:', e); }
   }
 
   // ── Initialise once (called from _layout.tsx or first subscriber) ──
@@ -201,7 +202,7 @@ class ConnectionHub {
           this._lastPingTs   = Date.now();
           this._notify();
         }
-      } catch {}
+      } catch (e) { logger.warn('[connectionHub] error:', e); }
     }, 8_000);
   }
 
@@ -264,13 +265,13 @@ class ConnectionHub {
     this._listeners.add(cb);
     // Immediately deliver current state — ensures React state is populated on mount
     const s = this.getState();
-    try { cb(s); } catch {}
+    try { cb(s); } catch (e) { logger.warn('[connectionHub] error:', e); }
     return () => this._listeners.delete(cb);
   }
 
   private _notify(): void {
     const s = this.getState();
-    this._listeners.forEach(cb => { try { cb(s); } catch {} });
+    this._listeners.forEach(cb => { try { cb(s); } catch (e) { logger.warn('[connectionHub] error:', e); } });
   }
 
   // ── Feature gate passthrough ──────────────────────────────────

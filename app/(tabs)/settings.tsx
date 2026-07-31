@@ -3,17 +3,21 @@
  * App configuration and preferences.
  */
 
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Modal } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { TabErrorBoundary } from '@/components/ui/TabErrorBoundary';
 import { D, FONT } from '@/constants/design';
 import { notifyOnboardingReset } from './_layout';
+import LegalAboutScreen from '@/components/ui/LegalAboutScreen';
 
 function SettingsScreen() {
   const insets = useSafeAreaInsets();
+  const router = useRouter();
+  const [aboutOpen, setAboutOpen] = useState(false);
 
   const handleReplayTutorial = async () => {
     try {
@@ -43,6 +47,51 @@ function SettingsScreen() {
       </View>
 
       <View style={s.section}>
+        <Text style={s.sectionLabel}>LEGAL</Text>
+        <TouchableOpacity style={s.row} onPress={() => setAboutOpen(true)} activeOpacity={0.7}>
+          <MaterialIcons name="verified-user" size={18} color={D.violet} />
+          <View style={{ flex: 1, marginLeft: 12 }}>
+            <Text style={s.rowTitle}>About & Legal</Text>
+            <Text style={s.rowSub}>License, trademark, contact</Text>
+          </View>
+          <MaterialIcons name="chevron-right" size={18} color={D.textDim} />
+        </TouchableOpacity>
+        <TouchableOpacity style={s.row} onPress={() => router.push('/terms' as any)} activeOpacity={0.7}>
+          <MaterialIcons name="description" size={18} color={D.textMid} />
+          <View style={{ flex: 1, marginLeft: 12 }}>
+            <Text style={s.rowTitle}>Terms of Service</Text>
+          </View>
+          <MaterialIcons name="chevron-right" size={18} color={D.textDim} />
+        </TouchableOpacity>
+        <TouchableOpacity style={s.row} onPress={() => router.push('/data-safety' as any)} activeOpacity={0.7}>
+          <MaterialIcons name="security" size={18} color={D.green} />
+          <View style={{ flex: 1, marginLeft: 12 }}>
+            <Text style={s.rowTitle}>Data Safety</Text>
+          </View>
+          <MaterialIcons name="chevron-right" size={18} color={D.textDim} />
+        </TouchableOpacity>
+        <TouchableOpacity style={s.row} onPress={() => router.push('/privacy-policy' as any)} activeOpacity={0.7}>
+          <MaterialIcons name="policy" size={18} color={D.cyan} />
+          <View style={{ flex: 1, marginLeft: 12 }}>
+            <Text style={s.rowTitle}>Privacy Policy</Text>
+          </View>
+          <MaterialIcons name="chevron-right" size={18} color={D.textDim} />
+        </TouchableOpacity>
+      </View>
+
+      <View style={s.section}>
+        <Text style={s.sectionLabel}>DIAGNOSTICS</Text>
+        <TouchableOpacity style={s.row} onPress={() => router.push('/crash-report' as any)} activeOpacity={0.7}>
+          <MaterialIcons name="bug-report" size={18} color={D.red} />
+          <View style={{ flex: 1, marginLeft: 12 }}>
+            <Text style={s.rowTitle}>Crash Report</Text>
+            <Text style={s.rowSub}>Startup diagnostics & boot error log</Text>
+          </View>
+          <MaterialIcons name="chevron-right" size={18} color={D.textDim} />
+        </TouchableOpacity>
+      </View>
+
+      <View style={s.section}>
         <Text style={s.sectionLabel}>APP INFO</Text>
         <View style={s.row}>
           <MaterialIcons name="info-outline" size={18} color={D.textMid} />
@@ -52,6 +101,16 @@ function SettingsScreen() {
           </View>
         </View>
       </View>
+
+      <Modal visible={aboutOpen} animationType="slide" onRequestClose={() => setAboutOpen(false)}>
+        <LegalAboutScreen />
+        <TouchableOpacity
+          onPress={() => setAboutOpen(false)}
+          style={{ position: 'absolute', top: insets.top + 10, right: 16, width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.4)' }}
+        >
+          <MaterialIcons name="close" size={20} color="#FFF" />
+        </TouchableOpacity>
+      </Modal>
     </View>
   );
 }

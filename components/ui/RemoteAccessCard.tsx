@@ -11,6 +11,7 @@ import { MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { safeSetClipboard } from '@/services/safeClipboard';
 import { serverConnection } from '@/services/serverConnection';
 import { haptics } from '@/services/haptics';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const MONO: any = Platform.OS === 'ios' ? 'Menlo-Bold' : 'monospace';
 
@@ -53,6 +54,7 @@ export function RemoteAccessCard() {
   const [remoteOn,    setRemoteOn]    = useState(false);
   const [savedUrl,    setSavedUrl]    = useState('');
   const [inputUrl,    setInputUrl]    = useState('');
+  const [authToken,   setAuthToken]   = useState('');
   const [saving,      setSaving]      = useState(false);
   const [testState,   setTestState]   = useState<'idle'|'testing'|'ok'|'fail'>('idle');
   const [testMsg,     setTestMsg]     = useState('');
@@ -90,8 +92,16 @@ export function RemoteAccessCard() {
       Alert.alert('Invalid URL', 'Must start with http:// or https://\n\nExamples:\n• http://100.78.43.21:8766\n• https://butler-xyz.trycloudflare.com');
       return;
     }
+    if (!authToken.trim()) {
+      Alert.alert(
+        'Token required',
+        'Remote access exposes script execution outside your LAN. A blank/optional token here was a real security hole — paste the token butler_server.py printed on your PC before continuing.',
+      );
+      return;
+    }
     haptics.medium(); setSaving(true);
     await serverConnection.setRemoteUrl?.(url);
+    await AsyncStorage.setItem('@butler_server_token_v1', authToken.trim()).catch(() => {});
     setSavedUrl(url); setRemoteOn(true); setSaving(false); haptics.success();
     testConnection(url);
   };
@@ -236,6 +246,14 @@ export function RemoteAccessCard() {
             {saving ? <ActivityIndicator size="small" color="#000" /> : <MaterialIcons name="check" size={15} color="#000" />}
             <Text style={s.saveBtnTxt}>{saving?'...':'SAVE'}</Text>
           </TouchableOpacity>
+        </View>
+
+        <Text style={[s.label, { marginTop: 10 }]}>AUTH TOKEN (required for remote access)</Text>
+        <View style={[s.inputWrap, { borderColor: authToken ? C.cyan+'60' : C.red+'50' }]}>
+          <MaterialIcons name="vpn-key" size={12} color={authToken ? C.cyan : C.red} />
+          <TextInput style={s.input} value={authToken} onChangeText={setAuthToken}
+            placeholder="Paste the token butler_server.py printed on your PC" placeholderTextColor={C.dim}
+            autoCapitalize="none" autoCorrect={false} secureTextEntry />
         </View>
 
         {/* Template chips */}

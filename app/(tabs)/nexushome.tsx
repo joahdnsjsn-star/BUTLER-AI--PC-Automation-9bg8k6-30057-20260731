@@ -13,9 +13,14 @@ import { MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path, Circle, Line, Polygon } from 'react-native-svg';
 import { D, FONT, alpha, shadow } from '@/constants/design';
+import WelcomeBackOverlay from '@/components/ui/WelcomeBackOverlay';
+import { isReturningUserSync } from '@/services/userSession';
 import { TabErrorBoundary } from '@/components/ui/TabErrorBoundary';
 
 const SW = Math.max(320, Dimensions.get('window').width);
+// Layout Law (tools/PATTERNS.md): 3-column grids for any set of 3+ similar items,
+// 14px padding each side, 8px gap between columns.
+const COL3_W = Math.floor((SW - 28 - 8 * 2) / 3);
 
 // ── tiny helpers ────────────────────────────────────────────────────
 function PulseDot({ color, size = 7 }: { color: string; size?: number }) {
@@ -313,9 +318,9 @@ function HeroPanel({ isOnline }: { isOnline: boolean }) {
       {/* Identity */}
       <Text style={hero.identity}>BUTLER · AI</Text>
       <View style={hero.pills}>
-        <View style={[hero.pill, { borderColor: alpha(D.green, 0.4), backgroundColor: alpha(D.green, 0.1) }]}>
-          <PulseDot color={D.green} size={5} />
-          <Text style={[hero.pillTxt, { color: D.green }]}>ONLINE</Text>
+        <View style={[hero.pill, { borderColor: alpha(isOnline ? D.green : D.amber, 0.4), backgroundColor: alpha(isOnline ? D.green : D.amber, 0.1) }]}>
+          <PulseDot color={isOnline ? D.green : D.amber} size={5} />
+          <Text style={[hero.pillTxt, { color: isOnline ? D.green : D.amber }]}>{isOnline ? 'ONLINE' : 'OFFLINE'}</Text>
         </View>
         <View style={[hero.pill, { borderColor: alpha(D.primary, 0.4), backgroundColor: alpha(D.primary, 0.1) }]}>
           <MaterialCommunityIcons name="shield-check" size={10} color={D.primary} />
@@ -324,7 +329,7 @@ function HeroPanel({ isOnline }: { isOnline: boolean }) {
       </View>
 
       {/* Gradient headline */}
-      <Text style={hero.headline}>All Systems Operational</Text>
+      <Text style={hero.headline}>{isOnline ? 'All Systems Operational' : 'Awaiting PC Connection'}</Text>
       <Text style={hero.sub}>10 services · 12 nodes · 4 regions · 0 incidents</Text>
 
       <UptimeBars />
@@ -384,9 +389,9 @@ const hero = StyleSheet.create({
 });
 
 // ── SPARKLINE ─────────────────────────────────────────────────────
-function Sparkline({ data, color, height = 36 }: { data: number[]; color: string; height?: number }) {
+function Sparkline({ data, color, height = 30 }: { data: number[]; color: string; height?: number }) {
   if (!data.length) return null;
-  const w = ((SW - 28 - 12) / 2) - 32;
+  const w = COL3_W - 22;
   const max = Math.max(...data, 1);
   const pts = data
     .map((v, i) => {
@@ -422,51 +427,49 @@ interface StatCardProps {
   color: string;
   data: number[];
   fill?: boolean;
+  onPress?: () => void;
 }
 
-function StatCard({ label, value, delta, color, data, fill }: StatCardProps) {
+function StatCard({ label, value, delta, color, data, fill, onPress }: StatCardProps) {
   return (
-    <View
+    <TouchableOpacity
+      activeOpacity={0.8}
+      onPress={onPress}
       style={[
         sc.card,
+        { width: COL3_W },
         fill && { backgroundColor: alpha(color, 0.07) },
-        { borderColor: alpha(color, fill ? 0.25 : 0.15) },
+        { borderColor: alpha(color, fill ? 0.3 : 0.15) },
       ]}
     >
-      {/* Left accent rail */}
+      {/* Top accent rail */}
       <View style={[sc.rail, { backgroundColor: color }]} />
 
       <View style={sc.body}>
-        <Text style={sc.label}>{label}</Text>
-        <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 6 }}>
-          <Text style={[sc.value, { color }]}>{value}</Text>
-          {delta ? (
-            <Text style={[sc.delta, { color: D.textDim }]}>{delta}</Text>
-          ) : null}
-        </View>
+        <Text style={sc.label} numberOfLines={1}>{label}</Text>
+        <Text style={[sc.value, { color }]} numberOfLines={1} adjustsFontSizeToFit>{value}</Text>
+        {delta ? (
+          <Text style={[sc.delta, { color: D.textDim }]}>{delta}</Text>
+        ) : null}
         <View style={{ marginTop: 6 }}>
-          <Sparkline data={data} color={color} height={36} />
+          <Sparkline data={data} color={color} height={26} />
         </View>
-        <Text style={sc.tapHint}>TAP TO EXPAND</Text>
       </View>
-    </View>
+    </TouchableOpacity>
   );
 }
 
 const sc = StyleSheet.create({
   card: {
-    flex: 1,
     borderWidth: 1, borderRadius: 12,
     backgroundColor: D.surface,
-    flexDirection: 'row',
     overflow: 'hidden',
   },
-  rail:    { width: 3, alignSelf: 'stretch', borderRadius: 2 },
-  body:    { flex: 1, padding: 12 },
-  label:   { fontFamily: FONT.mono, fontSize: 9.5, color: D.textMid, letterSpacing: 1.5, marginBottom: 5 },
-  value:   { fontSize: 26, fontWeight: '800', lineHeight: 30 },
-  delta:   { fontFamily: FONT.mono, fontSize: 10, color: D.textDim },
-  tapHint: { fontFamily: FONT.mono, fontSize: 8.5, color: D.textDim, letterSpacing: 1, marginTop: 6 },
+  rail:    { height: 3, alignSelf: 'stretch' },
+  body:    { padding: 10 },
+  label:   { fontFamily: FONT.mono, fontSize: 8.5, color: D.textMid, letterSpacing: 1, marginBottom: 6 },
+  value:   { fontSize: 18, fontWeight: '800', lineHeight: 21 },
+  delta:   { fontFamily: FONT.mono, fontSize: 9, color: D.textDim, marginTop: 2 },
 });
 
 // ── FORGE CTA ─────────────────────────────────────────────────────
@@ -522,6 +525,7 @@ const MOCK_DATA = {
 function NexusHomeInner() {
   const insets   = useSafeAreaInsets();
   const [isOnline, setIsOnline] = useState(false);
+  const [isReturning] = useState(() => { try { return isReturningUserSync(); } catch { return false; } });
 
   const goToTab = useCallback((tab: string) => {
     try { (global as any).__butlerSwitchTab?.(tab); } catch {}
@@ -530,6 +534,9 @@ function NexusHomeInner() {
   return (
     <View style={{ flex: 1, backgroundColor: D.bg }}>
       <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
+
+      {/* Brief greeting on cold launch */}
+      <WelcomeBackOverlay isReturning={isReturning} />
 
       {/* STICKY HEADER */}
       <NexusHeader safeTop={insets.top} isOnline={isOnline} />
@@ -555,34 +562,30 @@ function NexusHomeInner() {
         {/* SYSTEM VITALS */}
         <SectionHeader title="SYSTEM VITALS" badge="LIVE" badgeColor={D.green} />
 
-        <View style={{ flexDirection: 'row', gap: 12, marginBottom: 12 }}>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 4 }}>
           <StatCard
             label="UPTIME" value="99.98%" delta="+0.02%"
-            color={D.green} data={MOCK_DATA.uptime}
+            color={D.green} data={MOCK_DATA.uptime} onPress={() => goToTab('logs')}
           />
           <StatCard
             label="REQUESTS" value="48.2k" delta="+12%"
-            color={D.primary} data={MOCK_DATA.requests}
+            color={D.primary} data={MOCK_DATA.requests} onPress={() => goToTab('logs')}
           />
-        </View>
-        <View style={{ flexDirection: 'row', gap: 12, marginBottom: 12 }}>
           <StatCard
             label="LATENCY" value="142ms" delta="-8ms"
-            color={D.cyan} data={MOCK_DATA.latency} fill
+            color={D.cyan} data={MOCK_DATA.latency} fill onPress={() => goToTab('logs')}
           />
           <StatCard
             label="ERRORS" value="0.04%" delta="-0.01%"
-            color={D.red} data={MOCK_DATA.errors}
+            color={D.red} data={MOCK_DATA.errors} onPress={() => goToTab('logs')}
           />
-        </View>
-        <View style={{ flexDirection: 'row', gap: 12, marginBottom: 4 }}>
           <StatCard
             label="ACTIVE" value="1,284" delta="+184"
-            color={D.violet} data={MOCK_DATA.active}
+            color={D.violet} data={MOCK_DATA.active} onPress={() => goToTab('logs')}
           />
           <StatCard
             label="AI TOK/S" value="18.4k" delta="+2.1k"
-            color={D.net} data={MOCK_DATA.tokps}
+            color={D.net} data={MOCK_DATA.tokps} onPress={() => goToTab('logs')}
           />
         </View>
 
@@ -649,10 +652,8 @@ const QUICK_ITEMS = [
 ];
 
 function QuickGrid({ onNavigate }: { onNavigate: (tab: string) => void }) {
-  const colW = Math.floor((SW - 28 - 12) / 2);
-
   return (
-    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginBottom: 8 }}>
+    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 8 }}>
       {QUICK_ITEMS.map((item) => (
         <TouchableOpacity
           key={item.label}
@@ -660,7 +661,7 @@ function QuickGrid({ onNavigate }: { onNavigate: (tab: string) => void }) {
           activeOpacity={0.75}
           style={[
             qg.tile,
-            { width: colW, borderColor: alpha(item.color, 0.3) },
+            { width: COL3_W, borderColor: alpha(item.color, 0.3) },
           ]}
         >
           {/* Top accent */}
@@ -669,10 +670,10 @@ function QuickGrid({ onNavigate }: { onNavigate: (tab: string) => void }) {
           {/* Content */}
           <View style={qg.body}>
             <View style={[qg.iconBox, { backgroundColor: alpha(item.color, 0.12) }]}>
-              <MaterialIcons name={item.icon as any} size={24} color={item.color} />
+              <MaterialIcons name={item.icon as any} size={20} color={item.color} />
             </View>
-            <Text style={[qg.label, { color: item.color }]}>{item.label}</Text>
-            <Text style={qg.sub} numberOfLines={1}>{item.sub}</Text>
+            <Text style={[qg.label, { color: item.color }]} numberOfLines={1}>{item.label}</Text>
+            <Text style={qg.sub} numberOfLines={2}>{item.sub}</Text>
           </View>
         </TouchableOpacity>
       ))}
@@ -685,16 +686,16 @@ const qg = StyleSheet.create({
     borderWidth: 1, borderRadius: 12,
     backgroundColor: D.surface,
     overflow: 'hidden',
-    aspectRatio: 1,
+    aspectRatio: 0.95,
   },
   topRail: { height: 2 },
   body: {
-    flex: 1, padding: 12,
-    justifyContent: 'center', gap: 8,
+    flex: 1, padding: 10,
+    justifyContent: 'center', gap: 6,
   },
-  iconBox: { width: 44, height: 44, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
-  label:   { fontFamily: FONT.mono, fontSize: 11, fontWeight: '800', letterSpacing: 1.5 },
-  sub:     { fontFamily: FONT.mono, fontSize: 9, color: D.textDim, letterSpacing: 0.5 },
+  iconBox: { width: 36, height: 36, borderRadius: 9, alignItems: 'center', justifyContent: 'center' },
+  label:   { fontFamily: FONT.mono, fontSize: 9.5, fontWeight: '800', letterSpacing: 1 },
+  sub:     { fontFamily: FONT.mono, fontSize: 8, color: D.textDim, letterSpacing: 0.3, lineHeight: 11 },
 });
 
 // ── EXPORT ────────────────────────────────────────────────────────

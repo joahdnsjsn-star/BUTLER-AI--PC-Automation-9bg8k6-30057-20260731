@@ -20,7 +20,7 @@ class ServerMetricsService {
   private _ttlMs = 5000;
 
   async fetch(force = false): Promise<ServerMetrics> {
-    if (!serverConnection.isConnected) return EMPTY;
+    if (!serverConnection.isConnected()) return EMPTY;
     if (!force && Date.now() - this._lastFetch < this._ttlMs) return this._cache;
 
     try {

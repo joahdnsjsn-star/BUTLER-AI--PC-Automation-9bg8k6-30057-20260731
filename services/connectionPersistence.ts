@@ -11,6 +11,7 @@
  *  • 2-second quick-ping for instant UI feedback
  */
 
+import { logger } from '@/utils/logger';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { serverConnection, ConnResult } from './serverConnection';
 
@@ -61,7 +62,7 @@ class ConnectionPersistenceService {
     return () => { this._listeners = this._listeners.filter(l => l !== cb); };
   }
   private _emit(connected: boolean, ip: string, port: string) {
-    this._listeners.forEach(l => { try { l(connected, ip, port); } catch {} });
+    this._listeners.forEach(l => { try { l(connected, ip, port); } catch (e) { logger.warn('[connectionPersistence] error:', e); } });
   }
 
   async load(): Promise<void> {
@@ -71,7 +72,7 @@ class ConnectionPersistenceService {
         .then(pairs => pairs.map(([, v]) => v));
       if (goldenRaw)   this._golden   = JSON.parse(goldenRaw);
       if (lastGoodRaw) this._lastGood = JSON.parse(lastGoodRaw);
-    } catch {}
+    } catch (e) { logger.warn('[connectionPersistence] error:', e); }
     this._loaded = true;
   }
 
@@ -81,7 +82,7 @@ class ConnectionPersistenceService {
         [CP_GOLDEN_KEY,    JSON.stringify(this._golden)],
         [CP_LAST_GOOD_KEY, JSON.stringify(this._lastGood)],
       ]);
-    } catch {}
+    } catch (e) { logger.warn('[connectionPersistence] error:', e); }
   }
 
   async recordSuccess(ip: string, port: string, latencyMs: number): Promise<void> {
@@ -115,7 +116,7 @@ class ConnectionPersistenceService {
       const res  = await fetch(`http://${ip}:${port}/api/status`, { signal: ctrl.signal });
       clearTimeout(tid);
       if (res.status < 500) return Date.now() - t0;
-    } catch {}
+    } catch (e) { logger.warn('[connectionPersistence] error:', e); }
     return null;
   }
 
@@ -264,7 +265,7 @@ class ConnectionPersistenceService {
         // Pre-seed serverConnection so getIP()/getPort() return values immediately
         await serverConnection.saveManual(savedIp, savedPort).catch(() => {});
       }
-    } catch {}
+    } catch (e) { logger.warn('[connectionPersistence] error:', e); }
   }
 }
 

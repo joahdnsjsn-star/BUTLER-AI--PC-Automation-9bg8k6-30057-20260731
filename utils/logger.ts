@@ -270,20 +270,25 @@ function safeJSON<T>(raw: string | null | undefined, fallback: T, tag = '[App]')
  *   logger.safeNav(router, '/(tabs)', '[Screen10]', ['/main-menu', '/']);
  */
 function safeNav(
-  router: { replace: (href: any) => void },
+  router: { replace: (href: any) => void; navigate?: (href: any) => void },
   primary: string,
   tag = '[App]',
-  fallbacks: string[] = ['/main-menu']
+  fallbacks: string[] = ['/(tabs)/nexushome', '/(tabs)', '/main-menu']
 ): boolean {
-  const targets = [primary, ...fallbacks];
+  // Always ensure nexushome is in the chain
+  const targets = Array.from(new Set([primary, ...fallbacks, '/(tabs)/nexushome', '/(tabs)']));
+  // Fire globals first
+  try { (global as any).__setNeedsOnboarding?.(false); } catch {}
+  try { (global as any).__onboardingComplete?.(); } catch {}
   for (const target of targets) {
     try {
       _log(`${tag} safeNav → ${target}`);
       router.replace(target as any);
       return true;
     } catch (e) {
-      _warn(`${tag} safeNav failed for "${target}":`, e, FIX_PATTERNS.ROUTER_GUARD);
+      _warn(`${tag} safeNav replace failed for "${target}":`, e, FIX_PATTERNS.ROUTER_GUARD);
     }
+    try { if (typeof router.navigate === 'function') { router.navigate(target as any); return true; } } catch {}
   }
   _error(`${tag} safeNav exhausted all routes:`, targets);
   return false;

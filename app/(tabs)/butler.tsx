@@ -16,6 +16,7 @@ import { haptics } from '@/services/haptics';
 import { TabErrorBoundary } from '@/components/ui/TabErrorBoundary';
 import { useConnectionStatus } from '@/hooks/useConnection';
 import { D, FONT, alpha, shadow } from '@/constants/design';
+import { TypingIndicator } from '@/components/ui/TypingIndicator';
 
 const SW = Dimensions.get('window').width;
 
@@ -829,7 +830,12 @@ function ButlerInner() {
           ListEmptyComponent={
             <EmptyState isOnline={isConnected} onSend={sendMessage} />
           }
-          ListFooterComponent={<View style={{ height: 8 }} />}
+          ListFooterComponent={
+            <View style={{ paddingHorizontal: 14, paddingTop: loading && !streamId ? 6 : 0 }}>
+              {loading && !streamId ? <TypingIndicator /> : null}
+              <View style={{ height: 8 }} />
+            </View>
+          }
           contentContainerStyle={{ paddingTop: 10, flexGrow: 1 }}
           showsVerticalScrollIndicator={false}
           keyboardDismissMode="on-drag"
