@@ -2,6 +2,8 @@ name: Unzip and Replace Files
 
 on:
   push:
+    branches:
+      - main
     paths:
       - '**.zip'
   pull_request:
@@ -27,11 +29,15 @@ jobs:
           ref: ${{ github.head_ref || github.ref_name }}
 
       - name: Find and unzip uploaded zip files
+        id: unzip
         run: |
           set -e
-          ZIP_FILES=$(find . -maxdepth 3 -name "*.zip" ! -path "./.git/*")
+          ZIP_FILES=$(find . -maxdepth 3 -name "*.zip" \
+            ! -path "./.git/*" \
+            ! -path "./node_modules/*")
           if [ -z "$ZIP_FILES" ]; then
             echo "No zip files found, nothing to do."
+            echo "changed=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
@@ -46,8 +52,10 @@ jobs:
               exit 1
             fi
           done
+          echo "changed=true" >> "$GITHUB_OUTPUT"
 
-      - name: Commit and push updated files to main
+      - name: Commit and push updated files
+        if: steps.unzip.outputs.changed == 'true'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
@@ -58,12 +66,21 @@ jobs:
             echo "No changes to commit."
           else
             git commit -m "auto: unzip and replace files → OnSpace.ai preview updated"
-            git push origin HEAD:main
-            echo "🚀 Changes pushed to main — OnSpace.ai preview will now reflect the new files."
+
+            if [ "${{ github.event_name }}" = "pull_request" ]; then
+              # Push unzipped content back to the PR branch.
+              # The auto-merge step below will then squash-merge it into main.
+              git push origin HEAD:${{ github.head_ref }}
+              echo "🔀 Unzipped content pushed to PR branch — auto-merge will apply to main."
+            else
+              # Push directly to main (push or workflow_dispatch event).
+              git push origin HEAD:main
+              echo "🚀 Changes pushed to main — OnSpace.ai preview will now reflect the new files."
+            fi
           fi
 
       - name: Auto-merge PR if triggered by pull request
-        if: github.event_name == 'pull_request'
+        if: steps.unzip.outputs.changed == 'true' && github.event_name == 'pull_request'
         run: |
           gh pr merge ${{ github.event.pull_request.number }} \
             --auto \
@@ -72,3 +89,15 @@ jobs:
             --repo ${{ github.repository }} || true
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Workflow summary
+        if: always()
+        run: |
+          echo "## 📦 Unzip and Replace — Summary" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Field | Value |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|---|---|" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Event | \`${{ github.event_name }}\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Branch | \`${{ github.head_ref || github.ref_name }}\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Files changed | \`${{ steps.unzip.outputs.changed }}\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "OnSpace.ai preview updates automatically when **main** receives new commits." >> "$GITHUB_STEP_SUMMARY"
